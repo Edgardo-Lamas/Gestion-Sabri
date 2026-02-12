@@ -26,7 +26,13 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
         // 2. Buscar todas las compras del mismo producto ordenadas por fecha ascendente donde cantidad_disponible > 0
         const compras_producto = compras
             .filter(c => c.producto_id === nuevaVenta.producto_id && c.cantidad_disponible > 0)
-            .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            .sort((a, b) => {
+                const fechaA = new Date(a.fecha);
+                const fechaB = new Date(b.fecha);
+                if (fechaA - fechaB !== 0) return fechaA - fechaB;
+                // FIFO Real: A igual fecha, el que se registró primero (creado_en más bajo)
+                return (a.creado_en || 0) - (b.creado_en || 0);
+            });
 
         try {
             const { lotes_actualizados, costo_total } = ejecutarAlgoritmoVentaFIFO(cantidad_vendida, compras_producto);

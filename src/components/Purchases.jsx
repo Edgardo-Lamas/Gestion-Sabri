@@ -30,7 +30,8 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
             cantidad_kg: parseFloat(compra.cantidad_kg),
             cantidad_disponible: parseFloat(compra.cantidad_kg),
             costo_unitario: parseFloat(compra.costo_unitario),
-            fecha: compra.fecha || new Date().toISOString().split('T')[0]
+            fecha: compra.fecha || new Date().toISOString().split('T')[0],
+            creado_en: Date.now()
         };
 
         setCompras([nuevaCompra, ...compras]);
