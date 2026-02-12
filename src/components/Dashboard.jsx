@@ -13,11 +13,11 @@ const Dashboard = ({ compras, ventas, gastos }) => {
     }, [ventas, gastos]);
 
     const tarjetas = [
-        { label: 'Ingresos Totales', value: estadisticas.total_ingresos, icon: DollarSign, color: 'var(--primary)' },
-        { label: 'Costo de Mercadería (FIFO)', value: estadisticas.total_costo_mercaderia, icon: TrendingDown, color: 'var(--text-muted)' },
+        { label: 'Ingresos de Ventas', value: estadisticas.total_ingresos, icon: DollarSign, color: 'var(--primary)' },
+        { label: 'Costos de Ventas (FIFO)', value: estadisticas.total_costo_mercaderia, icon: TrendingDown, color: 'var(--text-muted)' },
         { label: 'Ganancia Bruta', value: estadisticas.ganancia_bruta, icon: TrendingUp, color: 'var(--secondary)' },
-        { label: 'Gastos de Operación', value: estadisticas.total_gastos, icon: TrendingDown, color: 'var(--error)' },
-        { label: 'Resultado Final (Neto)', value: estadisticas.resultado_final, icon: DollarSign, color: estadisticas.resultado_final >= 0 ? 'var(--secondary)' : 'var(--error)' },
+        { label: 'Total de Gastos', value: estadisticas.total_gastos, icon: TrendingDown, color: 'var(--error)' },
+        { label: 'Resultado Final', value: estadisticas.resultado_final, icon: DollarSign, color: estadisticas.resultado_final >= 0 ? 'var(--secondary)' : 'var(--error)' },
     ];
 
     return (
