@@ -119,34 +119,36 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
 
             <section className="glass-card" style={{ marginTop: '2rem' }}>
                 <h3>Historial de Compras</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Producto</th>
-                            <th>Cantidad</th>
-                            <th>Costo/kg</th>
-                            <th>Total</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {compras.map(c => (
-                            <tr key={c.id}>
-                                <td>{c.fecha}</td>
-                                <td>{productos.find(p => p.id === c.producto_id)?.nombre || 'Eliminado'}</td>
-                                <td>{c.cantidad_kg} kg</td>
-                                <td>${c.costo_unitario.toFixed(2)}</td>
-                                <td>${(c.cantidad_kg * c.costo_unitario).toFixed(2)}</td>
-                                <td>
-                                    <button onClick={() => deleteCompra(c.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
-                                        <Trash2 size={18} />
-                                    </button>
-                                </td>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Costo/kg</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {compras.map(c => (
+                                <tr key={c.id}>
+                                    <td>{c.fecha}</td>
+                                    <td>{productos.find(p => p.id === c.producto_id)?.nombre || 'Eliminado'}</td>
+                                    <td>{c.cantidad_kg} kg</td>
+                                    <td>${c.costo_unitario.toFixed(2)}</td>
+                                    <td>${(c.cantidad_kg * c.costo_unitario).toFixed(2)}</td>
+                                    <td>
+                                        <button onClick={() => deleteCompra(c.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <style jsx>{`

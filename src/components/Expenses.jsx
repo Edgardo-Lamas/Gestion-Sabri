@@ -73,30 +73,32 @@ const Expenses = ({ gastos, setGastos }) => {
 
             <section className="glass-card" style={{ marginTop: '2rem' }}>
                 <h3>Historial de Gastos</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Concepto</th>
-                            <th>Monto</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {gastos.map(g => (
-                            <tr key={g.id}>
-                                <td>{g.fecha}</td>
-                                <td>{g.concepto}</td>
-                                <td>${g.monto.toFixed(2)}</td>
-                                <td>
-                                    <button onClick={() => deleteGasto(g.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
-                                        <Trash2 size={18} />
-                                    </button>
-                                </td>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Concepto</th>
+                                <th>Monto</th>
+                                <th>Acciones</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {gastos.map(g => (
+                                <tr key={g.id}>
+                                    <td>{g.fecha}</td>
+                                    <td>{g.concepto}</td>
+                                    <td>${g.monto.toFixed(2)}</td>
+                                    <td>
+                                        <button onClick={() => deleteGasto(g.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <style jsx>{`
@@ -104,6 +106,9 @@ const Expenses = ({ gastos, setGastos }) => {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+          .grid-2 { grid-template-columns: 1fr; gap: 1rem; }
         }
       `}</style>
         </div>

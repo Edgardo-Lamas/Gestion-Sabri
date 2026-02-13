@@ -168,7 +168,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                 }
                 .dashboard-footer {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
                     gap: 1.5rem;
                 }
                 .metrics-row {
@@ -229,6 +229,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                     display: flex;
                     flex-direction: column;
                     gap: 1.5rem;
+                    min-width: 0;
                 }
                 .margin-card h3 {
                     margin-bottom: 2rem;
@@ -326,11 +327,29 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                     to { opacity: 1; transform: translateY(0); }
                 }
 
+                @media (max-width: 1024px) {
+                    .dashboard-footer {
+                        grid-template-columns: 1fr;
+                    }
+                }
+
                 @media (max-width: 768px) {
                     .value { font-size: 1.5rem; }
                     .stats-grid { grid-template-columns: 1fr; }
-                    .metrics-row { grid-template-columns: 1fr; gap: 2rem; }
-                    .dashboard-footer { grid-template-columns: 1fr; }
+                    .metrics-row { 
+                        grid-template-columns: 1fr; 
+                        gap: 2rem; 
+                        justify-items: center;
+                    }
+                    .chart-container {
+                        width: 100%;
+                    }
+                    .progress-section {
+                        width: 100%;
+                    }
+                    .expansion-card {
+                        padding: 1.5rem;
+                    }
                 }
             `}</style>
         </div>

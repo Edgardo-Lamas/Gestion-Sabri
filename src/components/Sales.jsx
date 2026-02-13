@@ -146,38 +146,40 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
 
             <section className="glass-card" style={{ marginTop: '2rem' }}>
                 <h3>Historial de Ventas</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Producto</th>
-                            <th>Cant. Vendida</th>
-                            <th>Ingreso Total</th>
-                            <th>Costo Calc.</th>
-                            <th>Ganancia</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {ventas.map(v => (
-                            <tr key={v.id}>
-                                <td>{v.fecha}</td>
-                                <td>{v.producto_nombre}</td>
-                                <td>{v.cantidad_vendida} kg</td>
-                                <td>${v.ingreso_total.toFixed(2)}</td>
-                                <td>${v.costo_calculado.toFixed(2)}</td>
-                                <td style={{ color: v.ganancia >= 0 ? 'var(--secondary)' : 'var(--error)', fontWeight: 'bold' }}>
-                                    ${v.ganancia.toFixed(2)}
-                                </td>
-                                <td>
-                                    <button onClick={() => deleteVenta(v)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
-                                        <Trash2 size={18} />
-                                    </button>
-                                </td>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Producto</th>
+                                <th>Cant. Vendida</th>
+                                <th>Ingreso Total</th>
+                                <th>Costo Calc.</th>
+                                <th>Ganancia</th>
+                                <th>Acciones</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {ventas.map(v => (
+                                <tr key={v.id}>
+                                    <td>{v.fecha}</td>
+                                    <td>{v.producto_nombre}</td>
+                                    <td>{v.cantidad_vendida} kg</td>
+                                    <td>${v.ingreso_total.toFixed(2)}</td>
+                                    <td>${v.costo_calculado.toFixed(2)}</td>
+                                    <td style={{ color: v.ganancia >= 0 ? 'var(--secondary)' : 'var(--error)', fontWeight: 'bold' }}>
+                                        ${v.ganancia.toFixed(2)}
+                                    </td>
+                                    <td>
+                                        <button onClick={() => deleteVenta(v)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <style jsx>{`
