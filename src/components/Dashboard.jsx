@@ -6,6 +6,21 @@ import {
     Receipt,
     BadgeDollarSign
 } from 'lucide-react';
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    PieChart,
+    Pie,
+    Cell,
+    Legend
+} from 'recharts';
 
 const Dashboard = ({ compras, ventas, gastos }) => {
     const estadisticas = useMemo(() => {
@@ -17,6 +32,38 @@ const Dashboard = ({ compras, ventas, gastos }) => {
 
         return { total_ingresos, total_costo_mercaderia, ganancia_bruta, total_gastos, resultado_final };
     }, [ventas, gastos]);
+
+    // Preparar datos para gráficos
+    const dataIngresosGastos = useMemo(() => {
+        const data = {};
+
+        // Agrupar ventas por fecha (mes/dia simplificado para demo)
+        (ventas || []).forEach(v => {
+            const date = v.fecha;
+            if (!data[date]) data[date] = { name: date, ingresos: 0, gastos: 0 };
+            data[date].ingresos += v.ingreso_total;
+        });
+
+        // Agrupar gastos por fecha
+        (gastos || []).forEach(g => {
+            const date = g.fecha;
+            if (!data[date]) data[date] = { name: date, ingresos: 0, gastos: 0 };
+            data[date].gastos += g.monto;
+        });
+
+        return Object.values(data).sort((a, b) => new Date(a.name) - new Date(b.name)).slice(-7); // Últimos 7 días con actividad
+    }, [ventas, gastos]);
+
+    const dataVentasProducto = useMemo(() => {
+        const data = {};
+        (ventas || []).forEach(v => {
+            if (!data[v.producto_nombre]) data[v.producto_nombre] = 0;
+            data[v.producto_nombre] += v.cantidad;
+        });
+        return Object.entries(data).map(([name, value]) => ({ name, value }));
+    }, [ventas]);
+
+    const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
     const tarjetas = [
         { label: 'Ingresos de Ventas', value: estadisticas.total_ingresos, icon: DollarSign, color: '#0ea5e9', desc: 'Suma de ingreso_total' },
@@ -41,6 +88,72 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                         <div className="desc">{t.desc}</div>
                     </div>
                 ))}
+            </div>
+
+            <div className="charts-grid">
+                <section className="glass-card chart-card">
+                    <h3>Ingresos vs Gastos (Última Actividad)</h3>
+                    <div className="chart-wrapper">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart data={dataIngresosGastos}>
+                                <defs>
+                                    <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })} />
+                                <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(value) => `$${value}`} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    formatter={(value) => [`$${value}`, '']}
+                                />
+                                <Legend />
+                                <Area type="monotone" dataKey="ingresos" stroke="#10b981" fillOpacity={1} fill="url(#colorIngresos)" name="Ingresos" />
+                                <Area type="monotone" dataKey="gastos" stroke="#ef4444" fillOpacity={1} fill="url(#colorGastos)" name="Gastos" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </section>
+
+                <section className="glass-card chart-card">
+                    <h3>Productos Más Vendidos (Kg)</h3>
+                    <div className="chart-wrapper">
+                        {dataVentasProducto.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={dataVentasProducto}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {dataVentasProducto.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="no-data">
+                                <p>Registra ventas para ver estadísticas</p>
+                            </div>
+                        )}
+                    </div>
+                </section>
             </div>
 
             <div className="dashboard-footer">
@@ -100,13 +213,6 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                             <i className="lucide-share-2" style={{ marginRight: '8px' }}></i>
                             Compartir Catálogo (WhatsApp)
                         </button>
-                        <button className="mockup-btn disabled secondary" title="Próximamente">
-                            <i className="lucide-clipboard-list" style={{ marginRight: '8px' }}></i>
-                            Recibir Pedidos Online
-                        </button>
-                    </div>
-                    <div className="expansion-footer">
-                        <span className="info-tag">Módulo de ventas activo (Próximamente)</span>
                     </div>
                 </section>
             </div>
@@ -114,13 +220,42 @@ const Dashboard = ({ compras, ventas, gastos }) => {
             <style jsx>{`
                 .dashboard-container {
                     animation: slideUp 0.5s ease-out;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
                 }
+                
                 .stats-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
                     gap: 1.5rem;
-                    margin-bottom: 2rem;
                 }
+                
+                .charts-grid {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 1.5rem;
+                }
+                
+                .chart-card h3 {
+                    margin-bottom: 1.5rem;
+                    font-size: 1.1rem;
+                    color: var(--text);
+                }
+                
+                .chart-wrapper {
+                    width: 100%;
+                    min-height: 300px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .no-data {
+                    color: var(--text-muted);
+                    font-style: italic;
+                }
+
                 .stat-card {
                     position: relative;
                     overflow: hidden;
@@ -168,7 +303,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                 }
                 .dashboard-footer {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    grid-template-columns: 1fr 1fr;
                     gap: 1.5rem;
                 }
                 .metrics-row {
@@ -242,6 +377,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                     margin-bottom: 0.5rem;
                     font-weight: 600;
                     font-size: 0.9rem;
+                    color: var(--text);
                 }
                 .progress-bar {
                     height: 10px;
@@ -306,21 +442,6 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                     background: #25d366; /* WhatsApp Green */
                     color: white;
                 }
-                .mockup-btn.secondary {
-                    background: #f8fafc;
-                    border: 1px solid var(--border);
-                    color: var(--text);
-                }
-                .expansion-footer {
-                    margin-top: 1.5rem;
-                    padding-top: 1rem;
-                    border-top: 1px dashed var(--border);
-                }
-                .info-tag {
-                    font-size: 0.75rem;
-                    color: var(--primary);
-                    font-weight: 600;
-                }
 
                 @keyframes slideUp {
                     from { opacity: 0; transform: translateY(20px); }
@@ -329,6 +450,9 @@ const Dashboard = ({ compras, ventas, gastos }) => {
 
                 @media (max-width: 1024px) {
                     .dashboard-footer {
+                        grid-template-columns: 1fr;
+                    }
+                    .charts-grid {
                         grid-template-columns: 1fr;
                     }
                 }
