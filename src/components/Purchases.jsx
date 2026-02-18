@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import { Plus, ShoppingCart, Trash2, Package, Calendar, Search } from 'lucide-react';
+import Modal from './ui/Modal';
+import { useToast } from '../context/ToastContext';
 
 const Purchases = ({ productos, setProductos, compras, setCompras }) => {
+    const { addToast } = useToast();
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
+
     const [nuevoProductoNombre, setNuevoProductoNombre] = useState('');
     const [compra, setCompra] = useState({
         producto_id: '',
@@ -10,19 +21,30 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
         fecha: new Date().toISOString().split('T')[0]
     });
 
-    const addProducto = () => {
-        if (!nuevoProductoNombre.trim()) return;
+    const addProducto = (e) => {
+        e.preventDefault();
+        if (!nuevoProductoNombre.trim()) {
+            addToast('El nombre del producto no puede estar vacío', 'error');
+            return;
+        }
+
         const nuevoProducto = {
             id: crypto.randomUUID(),
             nombre: nuevoProductoNombre.trim()
         };
+
         setProductos([...productos, nuevoProducto]);
         setNuevoProductoNombre('');
+        setIsProductModalOpen(false);
+        addToast('Producto agregado correctamente', 'success');
     };
 
     const addCompra = (e) => {
         e.preventDefault();
-        if (!compra.producto_id || !compra.cantidad_kg || !compra.costo_unitario) return;
+        if (!compra.producto_id || !compra.cantidad_kg || !compra.costo_unitario) {
+            addToast('Por favor completa todos los campos', 'error');
+            return;
+        }
 
         const nuevaCompra = {
             ...compra,
@@ -41,84 +63,56 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
             costo_unitario: '',
             fecha: new Date().toISOString().split('T')[0]
         });
+        setIsPurchaseModalOpen(false);
+        addToast('Compra registrada exitosamente', 'success');
     };
 
     const deleteCompra = (id) => {
         if (window.confirm('¿Seguro que deseas eliminar esta compra?')) {
             setCompras(compras.filter(c => c.id !== id));
+            addToast('Compra eliminada', 'info');
         }
     };
 
+    // Filter and Pagination
+    const filteredCompras = compras.filter(c => {
+        const prodName = productos.find(p => p.id === c.producto_id)?.nombre || '';
+        return prodName.toLowerCase().includes(searchTerm.toLowerCase()) || c.fecha.includes(searchTerm);
+    });
+
+    const totalPages = Math.ceil(filteredCompras.length / itemsPerPage);
+    const paginatedCompras = filteredCompras.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     return (
         <div className="purchases-view">
-            <div className="grid-2">
-                <section className="glass-card">
-                    <h3>Nuevo Producto</h3>
-                    <div className="input-group" style={{ marginTop: '1rem' }}>
-                        <input
-                            type="text"
-                            placeholder="Nombre del producto (ej: Queso)"
-                            value={nuevoProductoNombre}
-                            onChange={(e) => setNuevoProductoNombre(e.target.value)}
-                        />
-                    </div>
-                    <button className="primary" onClick={addProducto}>
-                        <Plus size={18} /> Añadir Producto
+            <div className="view-header">
+                <div className="search-bar glass-card">
+                    <Search size={20} className="search-icon" />
+                    <input
+                        type="text"
+                        placeholder="Buscar compra por producto o fecha..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="actions">
+                    <button className="secondary-btn" onClick={() => setIsProductModalOpen(true)}>
+                        <Package size={20} /> Nuevo Producto
                     </button>
-                </section>
-
-                <section className="glass-card">
-                    <h3>Registrar Compra</h3>
-                    <form onSubmit={addCompra} style={{ marginTop: '1rem' }}>
-                        <div className="input-group">
-                            <label>Producto</label>
-                            <select
-                                value={compra.producto_id}
-                                onChange={(e) => setCompra({ ...compra, producto_id: e.target.value })}
-                            >
-                                <option value="">Seleccionar...</option>
-                                {productos.map(p => (
-                                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="grid-2">
-                            <div className="input-group">
-                                <label>Cantidad (kg)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={compra.cantidad_kg}
-                                    onChange={(e) => setCompra({ ...compra, cantidad_kg: e.target.value })}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>Costo por kg</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={compra.costo_unitario}
-                                    onChange={(e) => setCompra({ ...compra, costo_unitario: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <div className="input-group">
-                            <label>Fecha</label>
-                            <input
-                                type="date"
-                                value={compra.fecha}
-                                onChange={(e) => setCompra({ ...compra, fecha: e.target.value })}
-                            />
-                        </div>
-                        <button type="submit" className="primary">
-                            <ShoppingCart size={18} /> Registrar Compra
-                        </button>
-                    </form>
-                </section>
+                    <button className="primary-btn pulse" onClick={() => setIsPurchaseModalOpen(true)}>
+                        <ShoppingCart size={20} /> Nueva Compra
+                    </button>
+                </div>
             </div>
 
-            <section className="glass-card" style={{ marginTop: '2rem' }}>
-                <h3>Historial de Compras</h3>
+            <section className="glass-card table-section">
+                <div className="table-header-row">
+                    <h3>Historial de Compras</h3>
+                    <span className="badge">{compras.length} registros</span>
+                </div>
                 <div className="table-container">
                     <table>
                         <thead>
@@ -132,35 +126,410 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {compras.map(c => (
-                                <tr key={c.id}>
-                                    <td>{c.fecha}</td>
-                                    <td>{productos.find(p => p.id === c.producto_id)?.nombre || 'Eliminado'}</td>
-                                    <td>{c.cantidad_kg} kg</td>
-                                    <td>${c.costo_unitario.toFixed(2)}</td>
-                                    <td>${(c.cantidad_kg * c.costo_unitario).toFixed(2)}</td>
-                                    <td>
-                                        <button onClick={() => deleteCompra(c.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </td>
+                            {paginatedCompras.length > 0 ? (
+                                paginatedCompras.map(c => (
+                                    <tr key={c.id}>
+                                        <td>
+                                            <div className="date-badge">
+                                                <Calendar size={14} />
+                                                {new Date(c.fecha).toLocaleDateString()}
+                                            </div>
+                                        </td>
+                                        <td className="fw-600">
+                                            {productos.find(p => p.id === c.producto_id)?.nombre || <span className="text-muted">Desconocido</span>}
+                                        </td>
+                                        <td>{c.cantidad_kg} kg</td>
+                                        <td>${c.costo_unitario.toFixed(2)}</td>
+                                        <td className="fw-700">${(c.cantidad_kg * c.costo_unitario).toFixed(2)}</td>
+                                        <td>
+                                            <button
+                                                className="icon-btn delete"
+                                                onClick={() => deleteCompra(c.id)}
+                                                title="Eliminar compra"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="empty-state">No se encontraron compras</td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="pagination">
+                        <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                            Anterior
+                        </button>
+                        <span>Página {currentPage} de {totalPages}</span>
+                        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                            Siguiente
+                        </button>
+                    </div>
+                )}
             </section>
 
+            {/* Modal de Nuevo Producto */}
+            <Modal
+                isOpen={isProductModalOpen}
+                onClose={() => setIsProductModalOpen(false)}
+                title="Añadir Nuevo Producto"
+            >
+                <form onSubmit={addProducto} className="modal-form">
+                    <div className="form-group">
+                        <label>Nombre del Producto</label>
+                        <div className="input-wrapper">
+                            <Package size={18} className="input-icon" />
+                            <input
+                                type="text"
+                                placeholder="Ej: Queso Tybo"
+                                value={nuevoProductoNombre}
+                                onChange={(e) => setNuevoProductoNombre(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+                    <div className="modal-actions">
+                        <button type="button" className="secondary-btn" onClick={() => setIsProductModalOpen(false)}>
+                            Cancelar
+                        </button>
+                        <button type="submit" className="primary-btn">
+                            <Plus size={18} /> Guardar Producto
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal de Nueva Compra */}
+            <Modal
+                isOpen={isPurchaseModalOpen}
+                onClose={() => setIsPurchaseModalOpen(false)}
+                title="Registrar Compra"
+            >
+                <form onSubmit={addCompra} className="modal-form">
+                    <div className="form-group">
+                        <label>Producto</label>
+                        <div className="select-wrapper">
+                            <Package size={18} className="input-icon" />
+                            <select
+                                value={compra.producto_id}
+                                onChange={(e) => setCompra({ ...compra, producto_id: e.target.value })}
+                                required
+                            >
+                                <option value="">Seleccionar...</option>
+                                {productos.map(p => (
+                                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Fecha</label>
+                            <input
+                                type="date"
+                                value={compra.fecha}
+                                onChange={(e) => setCompra({ ...compra, fecha: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Cantidad (kg)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
+                                value={compra.cantidad_kg}
+                                onChange={(e) => setCompra({ ...compra, cantidad_kg: e.target.value })}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Costo por kg ($)</label>
+                        <div className="input-wrapper">
+                            <span className="currency-symbol">$</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="0.00"
+                                value={compra.costo_unitario}
+                                onChange={(e) => setCompra({ ...compra, costo_unitario: e.target.value })}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="modal-actions">
+                        <button type="button" className="secondary-btn" onClick={() => setIsPurchaseModalOpen(false)}>
+                            Cancelar
+                        </button>
+                        <button type="submit" className="primary-btn">
+                            <ShoppingCart size={18} /> Registrar Compra
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
             <style jsx>{`
-        .grid-2 {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-        }
-        @media (max-width: 768px) {
-          .grid-2 { grid-template-columns: 1fr; }
-        }
-      `}</style>
+                .view-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                }
+
+                .search-bar {
+                    flex: 1;
+                    min-width: 250px;
+                    display: flex;
+                    align-items: center;
+                    padding: 0.75rem 1rem;
+                    gap: 0.75rem;
+                }
+
+                .search-bar input {
+                    border: none;
+                    background: transparent;
+                    width: 100%;
+                    outline: none;
+                    font-size: 0.95rem;
+                    color: var(--text);
+                }
+
+                .search-icon {
+                    color: var(--text-muted);
+                }
+
+                .actions {
+                    display: flex;
+                    gap: 1rem;
+                }
+
+                .primary-btn {
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 10px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);
+                }
+
+                .primary-btn:hover {
+                    background: var(--primary-hover);
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.4);
+                }
+
+                .secondary-btn {
+                    background: white;
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 10px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .secondary-btn:hover {
+                    background: #f8fafc;
+                    border-color: var(--primary);
+                    color: var(--primary);
+                }
+
+                .pulse {
+                    animation: pulse-shadow 2s infinite;
+                }
+
+                @keyframes pulse-shadow {
+                    0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+                }
+
+                .table-section {
+                    padding: 0;
+                    overflow: hidden;
+                }
+
+                .table-header-row {
+                    padding: 1.5rem;
+                    border-bottom: 1px solid var(--border);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+
+                .badge {
+                    background: #f1f5f9;
+                    color: var(--text-muted);
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                }
+
+                .date-badge {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                }
+
+                .fw-600 { font-weight: 600; }
+                .fw-700 { font-weight: 700; }
+                .text-muted { color: var(--text-muted); font-style: italic; }
+
+                .icon-btn.delete {
+                    color: var(--text-muted);
+                    padding: 0.4rem;
+                    border-radius: 6px;
+                    transition: all 0.2s;
+                    background: transparent;
+                    border: none;
+                    cursor: pointer;
+                }
+                .icon-btn.delete:hover {
+                    background: rgba(239, 68, 68, 0.1);
+                    color: var(--error);
+                }
+
+                .pagination {
+                    padding: 1rem;
+                    border-top: 1px solid var(--border);
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: center;
+                    gap: 1rem;
+                }
+                .pagination button {
+                    background: transparent;
+                    border: 1px solid var(--border);
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                }
+                .pagination button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .empty-state {
+                    text-align: center;
+                    padding: 3rem;
+                    color: var(--text-muted);
+                }
+
+                /* Modal Form Styles */
+                .modal-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
+                }
+
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }
+
+                .form-group label {
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    color: var(--text);
+                }
+
+                .form-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 1rem;
+                }
+
+                .select-wrapper, .input-wrapper {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+
+                .input-icon, .currency-symbol {
+                    position: absolute;
+                    left: 1rem;
+                    color: var(--text-muted);
+                    pointer-events: none;
+                }
+                
+                .currency-symbol {
+                    font-weight: 600;
+                }
+
+                select, input {
+                    width: 100%;
+                    padding: 0.75rem 1rem;
+                    padding-left: 2.5rem; /* Space for icon */
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    font-size: 0.95rem;
+                    transition: border-color 0.2s;
+                    background: #f8fafc;
+                }
+                
+                input[type="date"] {
+                    padding-left: 1rem;
+                }
+
+                select:focus, input:focus {
+                    outline: none;
+                    border-color: var(--primary);
+                    background: white;
+                }
+
+                .input-wrapper input {
+                    padding-left: 2rem;
+                }
+
+                .modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 1rem;
+                    margin-top: 1rem;
+                }
+
+                @media (max-width: 640px) {
+                    .view-header {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .actions {
+                        flex-direction: column;
+                    }
+                    .form-row {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            `}</style>
         </div>
     );
 };

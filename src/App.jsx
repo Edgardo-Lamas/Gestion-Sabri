@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { ToastProvider } from './context/ToastContext';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -64,215 +65,291 @@ function App() {
   ];
 
   return (
-    <div className="app-container">
-      {/* Overlay para móvil */}
-      {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
+    <ToastProvider>
+      <div className="app-container">
+        {/* Overlay para móvil */}
+        {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
 
-      <nav className={`sidebar glass-card ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="logo">
-            <h2>Gestión Sabri</h2>
-          </div>
-          <button className="mobile-close-btn" onClick={closeSidebar}>
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="nav-links">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => handleTabChange(item.id)}
-            >
-              <item.icon size={20} />
-              <span>{item.label}</span>
+        <nav className={`sidebar glass-card ${isSidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <div className="logo">
+              <h2>Gestión Sabri</h2>
+            </div>
+            <button className="mobile-close-btn" onClick={closeSidebar}>
+              <X size={24} />
             </button>
-          ))}
-        </div>
-      </nav>
+          </div>
 
-      <main className="content">
-        <header className="page-header">
-          <button className="mobile-menu-btn" onClick={toggleSidebar}>
-            <Menu size={24} />
-          </button>
-          <h1>{navItems.find(i => i.id === activeTab).label}</h1>
-        </header>
-        <div className="view-container">
-          {renderContent()}
-        </div>
-      </main>
+          <div className="nav-links">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => handleTabChange(item.id)}
+              >
+                <item.icon size={20} />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
 
-      <style jsx>{`
-        .app-container {
-          display: flex;
-          min-height: 100vh;
-          background: var(--background);
-          width: 100%;
-          overflow-x: hidden;
-        }
+          {/* User Section (New) */}
+          <div className="user-section">
+            <div className="user-avatar">S</div>
+            <div className="user-info">
+              <span className="user-name">Sabrina</span>
+              <span className="user-role">Administradora</span>
+            </div>
+          </div>
+        </nav>
 
-        .sidebar {
-          width: 260px;
-          margin: 1rem;
-          padding: 1.5rem;
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-          position: sticky;
-          top: 1rem;
-          height: calc(100vh - 2rem);
-          transition: transform 0.3s ease, left 0.3s ease;
-          z-index: 100;
-        }
+        <main className="content">
+          <header className="page-header">
+            <button className="mobile-menu-btn" onClick={toggleSidebar}>
+              <Menu size={24} />
+            </button>
+            <h1>{navItems.find(i => i.id === activeTab).label}</h1>
+          </header>
+          <div className="view-container">
+            {renderContent()}
+          </div>
+        </main>
 
-        .sidebar-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .mobile-close-btn {
-          display: none;
-          background: none;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-        }
-
-        .logo h2 {
-          color: var(--primary);
-          font-size: 1.5rem;
-        }
-
-        .nav-links {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem 1rem;
-          border: none;
-          background: transparent;
-          color: var(--text-muted);
-          cursor: pointer;
-          border-radius: var(--radius);
-          transition: all 0.2s ease;
-          font-weight: 500;
-          width: 100%;
-          text-align: left;
-        }
-
-        .nav-item:hover {
-          background: rgba(249, 115, 22, 0.1);
-          color: var(--primary);
-        }
-
-        .nav-item.active {
-          background: var(--primary);
-          color: white;
-          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-        }
-
-        .content {
-          flex: 1;
-          padding: 2rem;
-          max-width: 1200px;
-          margin: 0 auto;
-          width: 100%;
-          min-width: 0; /* Evita que el contenido flex rompa el contenedor */
-        }
-
-        .page-header {
-          margin-bottom: 2rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .mobile-menu-btn {
-          display: none;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          padding: 0.5rem;
-          border-radius: 8px;
-          color: var(--text);
-          cursor: pointer;
-          box-shadow: var(--shadow);
-        }
-
-        .view-container {
-          animation: fadeIn 0.3s ease;
-          width: 100%;
-        }
-
-        .sidebar-overlay {
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.5);
-          backdrop-filter: blur(4px);
-          z-index: 90;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* --- RESPONSIVE --- */
-        @media (max-width: 1024px) {
-          .sidebar {
-            position: fixed;
-            left: -300px;
-            top: 0;
-            bottom: 0;
-            height: 100vh;
-            margin: 0;
-            border-radius: 0;
-            transform: translateX(0);
-          }
-
-          .sidebar.open {
-            left: 0;
-          }
-
-          .sidebar-overlay {
-            display: block;
-          }
-
-          .mobile-menu-btn {
+        <style jsx>{`
+          .app-container {
             display: flex;
+            min-height: 100vh;
+            background: var(--background);
+            width: 100%;
+            overflow-x: hidden;
+            position: relative;
+          }
+
+          /* Animated Background */
+          .app-container::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(249, 115, 22, 0.03) 0%, transparent 50%);
+            z-index: 0;
+            animation: rotateBackground 60s linear infinite;
+            pointer-events: none;
+          }
+
+          @keyframes rotateBackground {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+
+          .sidebar {
+            width: 260px;
+            margin: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: sticky;
+            top: 1rem;
+            height: calc(100vh - 2rem);
+            transition: transform 0.3s ease, left 0.3s ease;
+            z-index: 100;
+            justify-content: space-between;
+          }
+
+          .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
           }
 
           .mobile-close-btn {
-            display: block;
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
           }
 
-          .content {
-            padding: 1.5rem;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .content {
-            padding: 1rem;
-          }
-          
-          .page-header h1 {
+          .logo h2 {
+            color: var(--primary);
             font-size: 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
           }
-        }
-      `}</style>
-    </div>
+
+          .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+          }
+
+          .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
+            font-weight: 500;
+            width: 100%;
+            text-align: left;
+          }
+
+          .nav-item:hover {
+            background: rgba(249, 115, 22, 0.08);
+            color: var(--primary);
+          }
+
+          .nav-item.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+          }
+
+          .user-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            margin-top: auto;
+          }
+
+          .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+          }
+
+          .user-info {
+            display: flex;
+            flex-direction: column;
+          }
+
+          .user-name {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.9rem;
+          }
+
+          .user-role {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+          }
+
+          .content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            min-width: 0; /* Evita que el contenido flex rompa el contenedor */
+            z-index: 1;
+          }
+
+          .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+          }
+
+          .mobile-menu-btn {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            box-shadow: var(--shadow);
+          }
+
+          .view-container {
+            animation: fadeIn 0.3s ease;
+            width: 100%;
+          }
+
+          .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 90;
+          }
+
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          /* --- RESPONSIVE --- */
+          @media (max-width: 1024px) {
+            .sidebar {
+              position: fixed;
+              left: -300px;
+              top: 0;
+              bottom: 0;
+              height: 100vh;
+              margin: 0;
+              border-radius: 0;
+              transform: translateX(0);
+            }
+
+            .sidebar.open {
+              left: 0;
+            }
+
+            .sidebar-overlay {
+              display: block;
+            }
+
+            .mobile-menu-btn {
+              display: flex;
+            }
+
+            .mobile-close-btn {
+              display: block;
+            }
+
+            .content {
+              padding: 1.5rem;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .content {
+              padding: 1rem;
+            }
+            
+            .page-header h1 {
+              font-size: 1.5rem;
+            }
+          }
+        `}</style>
+      </div>
+    </ToastProvider>
   );
 }
 
