@@ -308,7 +308,7 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
         .hero-section {
           position: relative;
           background: #1e293b; /* Fallback */
-          background-image: url('https://images.unsplash.com/photo-1544378730-8b5104b18790?auto=format&fit=crop&q=80&w=2000');
+          background-image: url('/hero-bg.jpg');
           background-size: cover;
           background-position: center;
           padding: 5rem 2rem;
