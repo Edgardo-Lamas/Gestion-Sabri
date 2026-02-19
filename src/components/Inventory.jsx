@@ -1,6 +1,25 @@
 import React from 'react';
 
-const Inventory = ({ productos, stock_actual, compras }) => {
+import { useToast } from '../context/ToastContext';
+
+const Inventory = ({ productos, setProductos, stock_actual, compras }) => {
+    const { addToast } = useToast();
+
+    const handlePriceChange = (id, newPrice) => {
+        const val = parseFloat(newPrice);
+        const updatedProducts = productos.map(p =>
+            p.id === id ? { ...p, precio_b2b: isNaN(val) ? 0 : val } : p
+        );
+        setProductos(updatedProducts);
+    };
+
+    const toggleCatalogVisibility = (id) => {
+        const updatedProducts = productos.map(p =>
+            p.id === id ? { ...p, mostrar_en_catalogo: p.mostrar_en_catalogo === false ? true : false } : p
+        );
+        setProductos(updatedProducts);
+        addToast('Visibilidad del catálogo actualizada', 'info');
+    };
     return (
         <div className="inventory-view">
             <section className="glass-card">
@@ -11,6 +30,8 @@ const Inventory = ({ productos, stock_actual, compras }) => {
                             <tr>
                                 <th>Producto</th>
                                 <th>Stock Total (kg)</th>
+                                <th>Precio Catálogo B2B ($/kg)</th>
+                                <th>Visible Catálogo</th>
                                 <th>Próximo Lote a Vender (FIFO)</th>
                             </tr>
                         </thead>
@@ -26,6 +47,37 @@ const Inventory = ({ productos, stock_actual, compras }) => {
                                         <td><strong>{p.nombre}</strong></td>
                                         <td style={{ color: stock > 0 ? 'var(--secondary)' : 'var(--error)', fontWeight: 'bold' }}>
                                             {stock.toFixed(2)} kg
+                                        </td>
+                                        <td>
+                                            <div className="input-wrapper" style={{ width: '120px' }}>
+                                                <span style={{ position: 'absolute', left: '8px', color: '#64748b', fontSize: '0.9em' }}>$</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={p.precio_b2b || ''}
+                                                    onChange={(e) => handlePriceChange(p.id, e.target.value)}
+                                                    placeholder="0.00"
+                                                    style={{ width: '100%', padding: '0.4rem 0.4rem 0.4rem 1.5rem', border: '1px solid var(--border)', borderRadius: '6px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <button
+                                                onClick={() => toggleCatalogVisibility(p.id)}
+                                                style={{
+                                                    padding: '0.3rem 0.6rem',
+                                                    borderRadius: '20px',
+                                                    border: 'none',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    background: p.mostrar_en_catalogo !== false ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.1)',
+                                                    color: p.mostrar_en_catalogo !== false ? '#10b981' : '#64748b'
+                                                }}
+                                            >
+                                                {p.mostrar_en_catalogo !== false ? 'Ocultar' : 'Mostrar'}
+                                            </button>
                                         </td>
                                         <td>
                                             {proximo_lote

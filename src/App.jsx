@@ -18,8 +18,11 @@ import Sales from './components/Sales';
 import Expenses from './components/Expenses';
 import Inventory from './components/Inventory';
 import MeatDistribution from './components/MeatDistribution';
+import B2BStoreFront from './components/B2BStoreFront';
 
 function App() {
+  // Navigation states: 'app' (dashboard) or 'storefront'
+  const [currentView, setCurrentView] = useState('app');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -71,7 +74,7 @@ function App() {
       case 'purchases': return <Purchases productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} />;
       case 'sales': return <Sales productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} ventas={ventas} setVentas={setVentas} stock_actual={stock_actual} costoPromedio={costoPromedio} />;
       case 'expenses': return <Expenses gastos={gastos} setGastos={setGastos} />;
-      case 'inventory': return <Inventory productos={productos} stock_actual={stock_actual} compras={compras} />;
+      case 'inventory': return <Inventory productos={productos} setProductos={setProductos} stock_actual={stock_actual} compras={compras} />;
       case 'distribution': return <MeatDistribution distribuciones={distribuciones} setDistribuciones={setDistribuciones} productos={productos} costoPromedio={costoPromedio} ventas={ventas} />;
       default: return <Dashboard />;
     }
@@ -88,56 +91,87 @@ function App() {
 
   return (
     <ToastProvider>
-      <div className="app-container">
-        {/* Overlay para móvil */}
-        {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
+      {currentView === 'storefront' ? (
+        <React.Fragment>
+          <B2BStoreFront productos={productos} />
+          {/* Un botón temporal para poder volver al admin mientras desarrollamos */}
+          <button
+            onClick={() => setCurrentView('app')}
+            style={{
+              position: 'fixed', bottom: '20px', left: '20px',
+              background: '#0f172a', color: 'white', padding: '10px 15px',
+              borderRadius: '8px', zIndex: 9999, border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}
+          >
+            ← Volver al Admin
+          </button>
+        </React.Fragment>
+      ) : (
+        <div className="app-container">
+          {/* Overlay para móvil */}
+          {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
 
-        <nav className={`sidebar glass-card ${isSidebarOpen ? 'open' : ''}`}>
-          <div className="sidebar-header">
-            <div className="logo">
-              <h2>Gestión Sabri</h2>
-            </div>
-            <button className="mobile-close-btn" onClick={closeSidebar}>
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="nav-links">
-            {navItems.map(item => (
-              <button
-                key={item.id}
-                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-                onClick={() => handleTabChange(item.id)}
-              >
-                <item.icon size={20} />
-                <span>{item.label}</span>
+          <nav className={`sidebar glass-card ${isSidebarOpen ? 'open' : ''}`}>
+            <div className="sidebar-header">
+              <div className="logo">
+                <h2>Gestión Sabri</h2>
+              </div>
+              <button className="mobile-close-btn" onClick={closeSidebar}>
+                <X size={24} />
               </button>
-            ))}
-          </div>
-
-          {/* User Section (New) */}
-          <div className="user-section">
-            <div className="user-avatar">S</div>
-            <div className="user-info">
-              <span className="user-name">Sabrina</span>
-              <span className="user-role">Administradora</span>
             </div>
-          </div>
-        </nav>
 
-        <main className="content">
-          <header className="page-header">
-            <button className="mobile-menu-btn" onClick={toggleSidebar}>
-              <Menu size={24} />
-            </button>
-            <h1>{navItems.find(i => i.id === activeTab).label}</h1>
-          </header>
-          <div className="view-container">
-            {renderContent()}
-          </div>
-        </main>
+            <div className="nav-links">
+              {navItems.map(item => (
+                <button
+                  key={item.id}
+                  className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                  onClick={() => handleTabChange(item.id)}
+                >
+                  <item.icon size={20} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
 
-        <style jsx>{`
+            <div className="nav-links" style={{ marginTop: 'auto' }}>
+              <button
+                className="nav-item"
+                style={{ color: '#f97316', background: 'rgba(249,115,22,0.1)' }}
+                onClick={() => {
+                  setCurrentView('storefront');
+                  closeSidebar();
+                }}
+              >
+                <Package size={20} />
+                <span>Ver Catálogo Público</span>
+              </button>
+            </div>
+
+            {/* User Section (New) */}
+            <div className="user-section">
+              <div className="user-avatar">S</div>
+              <div className="user-info">
+                <span className="user-name">Sabrina</span>
+                <span className="user-role">Administradora</span>
+              </div>
+            </div>
+          </nav>
+
+          <main className="content">
+            <header className="page-header">
+              <button className="mobile-menu-btn" onClick={toggleSidebar}>
+                <Menu size={24} />
+              </button>
+              <h1>{navItems.find(i => i.id === activeTab).label}</h1>
+            </header>
+            <div className="view-container">
+              {renderContent()}
+            </div>
+          </main>
+
+          <style jsx>{`
           .app-container {
             display: flex;
             min-height: 100vh;
@@ -370,7 +404,8 @@ function App() {
             }
           }
         `}</style>
-      </div>
+        </div>
+      )}
     </ToastProvider>
   );
 }
