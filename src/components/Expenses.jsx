@@ -282,7 +282,7 @@ const Expenses = ({ gastos, setGastos }) => {
 
                 .table-section {
                     padding: 0;
-                    overflow: hidden;
+                    overflow-x: auto;
                 }
 
                 .table-header-row {

@@ -370,7 +370,7 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
 
                 .table-section {
                     padding: 0;
-                    overflow: hidden;
+                    overflow-x: auto;
                 }
 
                 .table-header-row {

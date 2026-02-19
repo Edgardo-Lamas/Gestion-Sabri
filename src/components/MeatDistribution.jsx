@@ -523,7 +523,7 @@ function MeatDistribution({ distribuciones, setDistribuciones, productos = [], c
 
         .table-wrapper {
           padding: 1.5rem;
-          overflow: hidden;
+          overflow-x: auto;
         }
 
         .responsive-table {
