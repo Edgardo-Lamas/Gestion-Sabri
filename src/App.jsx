@@ -442,6 +442,92 @@ function App() {
             box-shadow: var(--shadow);
           }
 
+          /* --- MODAL STYLES --- */
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease;
+          }
+
+          .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+          }
+
+          .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+          }
+
+          .modal-header h2 {
+            font-size: 1.25rem;
+            color: var(--text);
+            margin: 0;
+          }
+
+          .modal-body {
+            padding: 1.5rem;
+          }
+
+          .icon-btn.delete {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .icon-btn.delete:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+          }
+
+          .primary-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);
+          }
+
+          .primary-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+          }
+
           .view-container {
             animation: fadeIn 0.3s ease;
             width: 100%;
