@@ -10,7 +10,7 @@ const Inventory = ({ productos, stock_actual, compras }) => {
                         <thead>
                             <tr>
                                 <th>Producto</th>
-                                <th>Stock Total</th>
+                                <th>Stock Total (kg)</th>
                                 <th>Próximo Lote a Vender (FIFO)</th>
                             </tr>
                         </thead>
@@ -48,8 +48,8 @@ const Inventory = ({ productos, stock_actual, compras }) => {
                             <tr>
                                 <th>Producto</th>
                                 <th>Fecha Compra</th>
-                                <th>Cantidad Disponible</th>
-                                <th>Costo Unitario/kg</th>
+                                <th>Cantidad Disponible (kg)</th>
+                                <th>Costo Unitario (kg)</th>
                             </tr>
                         </thead>
                         <tbody>

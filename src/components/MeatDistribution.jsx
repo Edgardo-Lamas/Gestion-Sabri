@@ -4,314 +4,340 @@ import { calculateMeatSaleDistribution } from '../utils/meatDistribution';
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-function MeatDistribution({ distribuciones, setDistribuciones }) {
-    const { addToast } = useToast();
-    const [showModal, setShowModal] = useState(false);
-    const [expandedId, setExpandedId] = useState(null);
+function MeatDistribution({ distribuciones, setDistribuciones, productos = [], costoPromedio = {}, ventas = [] }) {
+  const { addToast } = useToast();
+  const [showModal, setShowModal] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
-    const [form, setForm] = useState({
-        producto: '',
-        base_price: '',
-        shipping_cost: '',
-        sale_price: '',
-        partner_share_percentage: '50',
-        cantidad: '1',
-    });
+  const [form, setForm] = useState({
+    producto: '',
+    base_price: '',
+    shipping_cost: '',
+    sale_price: '',
+    partner_share_percentage: '50',
+    cantidad: '1',
+  });
 
-    const [resultado, setResultado] = useState(null);
+  const [resultado, setResultado] = useState(null);
 
-    const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n);
+  const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n);
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-        setResultado(null);
-    };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
 
-    const handleCalcular = (e) => {
-        e.preventDefault();
-        const base_price = parseFloat(form.base_price);
-        const shipping_cost = parseFloat(form.shipping_cost);
-        const sale_price = parseFloat(form.sale_price);
-        const partner_share_percentage = parseFloat(form.partner_share_percentage);
-        const cantidad = parseFloat(form.cantidad) || 1;
+    if (name === 'producto') {
+      const prod = productos.find(p => p.nombre === value);
+      let base_price = form.base_price;
+      let sale_price = form.sale_price;
 
-        if ([base_price, shipping_cost, sale_price, partner_share_percentage].some(isNaN)) {
-            addToast('Completá todos los campos numéricos', 'error');
-            return;
+      if (prod) {
+        const costo = costoPromedio[prod.id];
+        if (costo) base_price = costo.toFixed(2);
+
+        const ventasProducto = ventas.filter(v => v.producto_id === prod.id);
+        if (ventasProducto.length > 0) {
+          const ultima = ventasProducto[ventasProducto.length - 1];
+          sale_price = ultima.precio_venta_unitario || sale_price;
         }
-        if (sale_price <= base_price + shipping_cost) {
-            addToast('El precio de venta debe ser mayor al costo total', 'error');
-            return;
-        }
-        if (partner_share_percentage < 0 || partner_share_percentage > 100) {
-            addToast('El porcentaje debe estar entre 0 y 100', 'error');
-            return;
-        }
+      }
 
-        const dist = calculateMeatSaleDistribution({ base_price, shipping_cost, sale_price, partner_share_percentage });
-        setResultado({ ...dist, cantidad, producto: form.producto || 'Sin nombre' });
+      setForm({ ...form, producto: value, base_price, sale_price });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
+    setResultado(null);
+  };
+
+  const handleCalcular = (e) => {
+    e.preventDefault();
+    const base_price = parseFloat(form.base_price);
+    const shipping_cost = parseFloat(form.shipping_cost);
+    const sale_price = parseFloat(form.sale_price);
+    const partner_share_percentage = parseFloat(form.partner_share_percentage);
+    const cantidad = parseFloat(form.cantidad) || 1;
+
+    if ([base_price, shipping_cost, sale_price, partner_share_percentage].some(isNaN)) {
+      addToast('Completá todos los campos numéricos', 'error');
+      return;
+    }
+    if (sale_price <= base_price + shipping_cost) {
+      addToast('El precio de venta debe ser mayor al costo total', 'error');
+      return;
+    }
+    if (partner_share_percentage < 0 || partner_share_percentage > 100) {
+      addToast('El porcentaje debe estar entre 0 y 100', 'error');
+      return;
+    }
+
+    const dist = calculateMeatSaleDistribution({ base_price, shipping_cost, sale_price, partner_share_percentage });
+    setResultado({ ...dist, cantidad, producto: form.producto || 'Sin nombre' });
+  };
+
+  const handleRegistrar = () => {
+    if (!resultado) return;
+    const cantidad = resultado.cantidad;
+    const nuevaDistribucion = {
+      id: Date.now(),
+      fecha: new Date().toISOString().split('T')[0],
+      producto: resultado.producto,
+      cantidad,
+      base_price: parseFloat(form.base_price),
+      shipping_cost: parseFloat(form.shipping_cost),
+      sale_price: resultado.sale_price,
+      partner_share_percentage: parseFloat(form.partner_share_percentage),
+      total_cost: resultado.total_cost,
+      total_profit: resultado.total_profit,
+      partner_profit: resultado.partner_profit,
+      supplier_profit: resultado.supplier_profit,
+      supplier_total_return: resultado.supplier_total_return,
+      // Totales multiplicados por cantidad
+      total_sale: resultado.sale_price * cantidad,
+      total_partner_profit: resultado.partner_profit * cantidad,
+      total_supplier_profit: resultado.supplier_profit * cantidad,
+      total_supplier_return: resultado.supplier_total_return * cantidad,
     };
+    setDistribuciones([nuevaDistribucion, ...distribuciones]);
+    addToast('Distribución registrada correctamente', 'success');
+    setForm({ producto: '', base_price: '', shipping_cost: '', sale_price: '', partner_share_percentage: '50', cantidad: '1' });
+    setResultado(null);
+    setShowModal(false);
+  };
 
-    const handleRegistrar = () => {
-        if (!resultado) return;
-        const cantidad = resultado.cantidad;
-        const nuevaDistribucion = {
-            id: Date.now(),
-            fecha: new Date().toISOString().split('T')[0],
-            producto: resultado.producto,
-            cantidad,
-            base_price: parseFloat(form.base_price),
-            shipping_cost: parseFloat(form.shipping_cost),
-            sale_price: resultado.sale_price,
-            partner_share_percentage: parseFloat(form.partner_share_percentage),
-            total_cost: resultado.total_cost,
-            total_profit: resultado.total_profit,
-            partner_profit: resultado.partner_profit,
-            supplier_profit: resultado.supplier_profit,
-            supplier_total_return: resultado.supplier_total_return,
-            // Totales multiplicados por cantidad
-            total_sale: resultado.sale_price * cantidad,
-            total_partner_profit: resultado.partner_profit * cantidad,
-            total_supplier_profit: resultado.supplier_profit * cantidad,
-            total_supplier_return: resultado.supplier_total_return * cantidad,
-        };
-        setDistribuciones([nuevaDistribucion, ...distribuciones]);
-        addToast('Distribución registrada correctamente', 'success');
-        setForm({ producto: '', base_price: '', shipping_cost: '', sale_price: '', partner_share_percentage: '50', cantidad: '1' });
-        setResultado(null);
-        setShowModal(false);
-    };
+  const handleDelete = (id) => {
+    setDistribuciones(distribuciones.filter(d => d.id !== id));
+    addToast('Registro eliminado', 'success');
+  };
 
-    const handleDelete = (id) => {
-        setDistribuciones(distribuciones.filter(d => d.id !== id));
-        addToast('Registro eliminado', 'success');
-    };
+  // Totales del historial
+  const totales = distribuciones.reduce(
+    (acc, d) => ({
+      ventas: acc.ventas + (d.total_sale || d.sale_price * (d.cantidad || 1)),
+      ganancia_sabry: acc.ganancia_sabry + (d.total_partner_profit || d.partner_profit * (d.cantidad || 1)),
+      ganancia_proveedor: acc.ganancia_proveedor + (d.total_supplier_profit || d.supplier_profit * (d.cantidad || 1)),
+      retorno_proveedor: acc.retorno_proveedor + (d.total_supplier_return || d.supplier_total_return * (d.cantidad || 1)),
+    }),
+    { ventas: 0, ganancia_sabry: 0, ganancia_proveedor: 0, retorno_proveedor: 0 }
+  );
 
-    // Totales del historial
-    const totales = distribuciones.reduce(
-        (acc, d) => ({
-            ventas: acc.ventas + (d.total_sale || d.sale_price * (d.cantidad || 1)),
-            ganancia_sabry: acc.ganancia_sabry + (d.total_partner_profit || d.partner_profit * (d.cantidad || 1)),
-            ganancia_proveedor: acc.ganancia_proveedor + (d.total_supplier_profit || d.supplier_profit * (d.cantidad || 1)),
-            retorno_proveedor: acc.retorno_proveedor + (d.total_supplier_return || d.supplier_total_return * (d.cantidad || 1)),
-        }),
-        { ventas: 0, ganancia_sabry: 0, ganancia_proveedor: 0, retorno_proveedor: 0 }
-    );
+  return (
+    <div className="meat-dist-container">
+      {/* Tarjetas resumen */}
+      <div className="dist-summary-grid">
+        <div className="dist-summary-card" style={{ borderBottom: '3px solid #3b82f6' }}>
+          <div className="dist-summary-header">
+            <span>Total Ventas</span>
+            <div className="dist-icon-badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}><DollarSign size={18} /></div>
+          </div>
+          <p className="dist-summary-value">{fmt(totales.ventas)}</p>
+          <span className="dist-summary-sub">{distribuciones.length} distribuciones</span>
+        </div>
+        <div className="dist-summary-card" style={{ borderBottom: '3px solid #f97316' }}>
+          <div className="dist-summary-header">
+            <span>Ganancia Sabry</span>
+            <div className="dist-icon-badge" style={{ background: 'rgba(249,115,22,0.1)', color: '#f97316' }}><TrendingUp size={18} /></div>
+          </div>
+          <p className="dist-summary-value">{fmt(totales.ganancia_sabry)}</p>
+          <span className="dist-summary-sub">Acumulado socio</span>
+        </div>
+        <div className="dist-summary-card" style={{ borderBottom: '3px solid #10b981' }}>
+          <div className="dist-summary-header">
+            <span>Ganancia Proveedor</span>
+            <div className="dist-icon-badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}><Users size={18} /></div>
+          </div>
+          <p className="dist-summary-value">{fmt(totales.ganancia_proveedor)}</p>
+          <span className="dist-summary-sub">Acumulado proveedor</span>
+        </div>
+        <div className="dist-summary-card" style={{ borderBottom: '3px solid #8b5cf6' }}>
+          <div className="dist-summary-header">
+            <span>Retorno Proveedor</span>
+            <div className="dist-icon-badge" style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}><ArrowDownToLine size={18} /></div>
+          </div>
+          <p className="dist-summary-value">{fmt(totales.retorno_proveedor)}</p>
+          <span className="dist-summary-sub">Costo + ganancia</span>
+        </div>
+      </div>
 
-    return (
-        <div className="meat-dist-container">
-            {/* Tarjetas resumen */}
-            <div className="dist-summary-grid">
-                <div className="dist-summary-card" style={{ borderBottom: '3px solid #3b82f6' }}>
-                    <div className="dist-summary-header">
-                        <span>Total Ventas</span>
-                        <div className="dist-icon-badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}><DollarSign size={18} /></div>
-                    </div>
-                    <p className="dist-summary-value">{fmt(totales.ventas)}</p>
-                    <span className="dist-summary-sub">{distribuciones.length} distribuciones</span>
-                </div>
-                <div className="dist-summary-card" style={{ borderBottom: '3px solid #f97316' }}>
-                    <div className="dist-summary-header">
-                        <span>Ganancia Sabry</span>
-                        <div className="dist-icon-badge" style={{ background: 'rgba(249,115,22,0.1)', color: '#f97316' }}><TrendingUp size={18} /></div>
-                    </div>
-                    <p className="dist-summary-value">{fmt(totales.ganancia_sabry)}</p>
-                    <span className="dist-summary-sub">Acumulado socio</span>
-                </div>
-                <div className="dist-summary-card" style={{ borderBottom: '3px solid #10b981' }}>
-                    <div className="dist-summary-header">
-                        <span>Ganancia Proveedor</span>
-                        <div className="dist-icon-badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}><Users size={18} /></div>
-                    </div>
-                    <p className="dist-summary-value">{fmt(totales.ganancia_proveedor)}</p>
-                    <span className="dist-summary-sub">Acumulado proveedor</span>
-                </div>
-                <div className="dist-summary-card" style={{ borderBottom: '3px solid #8b5cf6' }}>
-                    <div className="dist-summary-header">
-                        <span>Retorno Proveedor</span>
-                        <div className="dist-icon-badge" style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}><ArrowDownToLine size={18} /></div>
-                    </div>
-                    <p className="dist-summary-value">{fmt(totales.retorno_proveedor)}</p>
-                    <span className="dist-summary-sub">Costo + ganancia</span>
-                </div>
+      {/* Botón nueva distribución */}
+      <button className="btn-primary" onClick={() => setShowModal(true)} style={{ marginBottom: '1.5rem' }}>
+        <Plus size={18} /> Nueva Distribución
+      </button>
+
+      {/* Modal de cálculo */}
+      <Modal isOpen={showModal} onClose={() => { setShowModal(false); setResultado(null); }} title="Calcular Distribución">
+        <form onSubmit={handleCalcular} className="dist-form">
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label>Producto</label>
+              <select name="producto" value={form.producto} onChange={handleChange}>
+                <option value="">Seleccionar producto...</option>
+                {productos.map(p => (
+                  <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Cantidad (kg)</label>
+              <input name="cantidad" type="number" min="1" step="0.1" placeholder="1" value={form.cantidad} onChange={handleChange} />
+            </div>
+          </div>
+
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label>Precio base ($/kg)</label>
+              <input name="base_price" type="number" min="0" step="0.01" placeholder="4100" value={form.base_price} onChange={handleChange} required />
+            </div>
+            <div className="form-group">
+              <label>Costo de flete ($/kg)</label>
+              <input name="shipping_cost" type="number" min="0" step="0.01" placeholder="200" value={form.shipping_cost} onChange={handleChange} required />
+            </div>
+          </div>
+
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label>Precio de venta ($/kg)</label>
+              <input name="sale_price" type="number" min="0" step="0.01" placeholder="7500" value={form.sale_price} onChange={handleChange} required />
+            </div>
+            <div className="form-group">
+              <label>% Ganancia Sabry</label>
+              <input name="partner_share_percentage" type="number" min="0" max="100" step="1" value={form.partner_share_percentage} onChange={handleChange} required />
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary" style={{ width: '100%' }}>
+            <Calculator size={18} /> Calcular
+          </button>
+        </form>
+
+        {resultado && (
+          <div className="dist-result-section">
+            <h3 style={{ margin: '1.5rem 0 1rem', fontWeight: 600 }}>Resultado por kg</h3>
+            <div className="dist-result-grid">
+              <div className="dist-result-chip" style={{ '--chip-color': '#64748b' }}>
+                <span className="chip-label">Costo Total</span>
+                <span className="chip-value">{fmt(resultado.total_cost)}</span>
+              </div>
+              <div className="dist-result-chip" style={{ '--chip-color': '#3b82f6' }}>
+                <span className="chip-label">Precio Venta</span>
+                <span className="chip-value">{fmt(resultado.sale_price)}</span>
+              </div>
+              <div className="dist-result-chip" style={{ '--chip-color': '#10b981' }}>
+                <span className="chip-label">Ganancia Total</span>
+                <span className="chip-value">{fmt(resultado.total_profit)}</span>
+              </div>
+              <div className="dist-result-chip" style={{ '--chip-color': '#f97316' }}>
+                <span className="chip-label">Ganancia Sabry</span>
+                <span className="chip-value">{fmt(resultado.partner_profit)}</span>
+              </div>
+              <div className="dist-result-chip" style={{ '--chip-color': '#8b5cf6' }}>
+                <span className="chip-label">Ganancia Proveedor</span>
+                <span className="chip-value">{fmt(resultado.supplier_profit)}</span>
+              </div>
+              <div className="dist-result-chip highlight" style={{ '--chip-color': '#ec4899' }}>
+                <span className="chip-label">Retorno Proveedor</span>
+                <span className="chip-value">{fmt(resultado.supplier_total_return)}</span>
+              </div>
             </div>
 
-            {/* Botón nueva distribución */}
-            <button className="btn-primary" onClick={() => setShowModal(true)} style={{ marginBottom: '1.5rem' }}>
-                <Plus size={18} /> Nueva Distribución
+            {resultado.cantidad > 1 && (
+              <>
+                <h4 style={{ margin: '1rem 0 0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+                  Total por {resultado.cantidad} kg
+                </h4>
+                <div className="dist-result-grid">
+                  <div className="dist-result-chip" style={{ '--chip-color': '#3b82f6' }}>
+                    <span className="chip-label">Venta Total</span>
+                    <span className="chip-value">{fmt(resultado.sale_price * resultado.cantidad)}</span>
+                  </div>
+                  <div className="dist-result-chip" style={{ '--chip-color': '#f97316' }}>
+                    <span className="chip-label">Sabry Total</span>
+                    <span className="chip-value">{fmt(resultado.partner_profit * resultado.cantidad)}</span>
+                  </div>
+                  <div className="dist-result-chip" style={{ '--chip-color': '#ec4899' }}>
+                    <span className="chip-label">Retorno Prov. Total</span>
+                    <span className="chip-value">{fmt(resultado.supplier_total_return * resultado.cantidad)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button className="btn-success" onClick={handleRegistrar} style={{ width: '100%', marginTop: '1rem' }}>
+              <Plus size={18} /> Registrar Distribución
             </button>
+          </div>
+        )}
+      </Modal>
 
-            {/* Modal de cálculo */}
-            <Modal isOpen={showModal} onClose={() => { setShowModal(false); setResultado(null); }} title="Calcular Distribución">
-                <form onSubmit={handleCalcular} className="dist-form">
-                    <div className="form-grid-2">
-                        <div className="form-group">
-                            <label>Producto</label>
-                            <input name="producto" placeholder="Ej: Bife de chorizo" value={form.producto} onChange={handleChange} />
-                        </div>
-                        <div className="form-group">
-                            <label>Cantidad (kg / unidades)</label>
-                            <input name="cantidad" type="number" min="1" step="0.1" placeholder="1" value={form.cantidad} onChange={handleChange} />
-                        </div>
-                    </div>
-
-                    <div className="form-grid-2">
-                        <div className="form-group">
-                            <label>Precio base ($/kg)</label>
-                            <input name="base_price" type="number" min="0" step="0.01" placeholder="4100" value={form.base_price} onChange={handleChange} required />
-                        </div>
-                        <div className="form-group">
-                            <label>Costo de flete ($/kg)</label>
-                            <input name="shipping_cost" type="number" min="0" step="0.01" placeholder="200" value={form.shipping_cost} onChange={handleChange} required />
-                        </div>
-                    </div>
-
-                    <div className="form-grid-2">
-                        <div className="form-group">
-                            <label>Precio de venta ($/kg)</label>
-                            <input name="sale_price" type="number" min="0" step="0.01" placeholder="7500" value={form.sale_price} onChange={handleChange} required />
-                        </div>
-                        <div className="form-group">
-                            <label>% Ganancia Sabry</label>
-                            <input name="partner_share_percentage" type="number" min="0" max="100" step="1" value={form.partner_share_percentage} onChange={handleChange} required />
-                        </div>
-                    </div>
-
-                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-                        <Calculator size={18} /> Calcular
-                    </button>
-                </form>
-
-                {resultado && (
-                    <div className="dist-result-section">
-                        <h3 style={{ margin: '1.5rem 0 1rem', fontWeight: 600 }}>Resultado por unidad / kg</h3>
-                        <div className="dist-result-grid">
-                            <div className="dist-result-chip" style={{ '--chip-color': '#64748b' }}>
-                                <span className="chip-label">Costo Total</span>
-                                <span className="chip-value">{fmt(resultado.total_cost)}</span>
-                            </div>
-                            <div className="dist-result-chip" style={{ '--chip-color': '#3b82f6' }}>
-                                <span className="chip-label">Precio Venta</span>
-                                <span className="chip-value">{fmt(resultado.sale_price)}</span>
-                            </div>
-                            <div className="dist-result-chip" style={{ '--chip-color': '#10b981' }}>
-                                <span className="chip-label">Ganancia Total</span>
-                                <span className="chip-value">{fmt(resultado.total_profit)}</span>
-                            </div>
-                            <div className="dist-result-chip" style={{ '--chip-color': '#f97316' }}>
-                                <span className="chip-label">Ganancia Sabry</span>
-                                <span className="chip-value">{fmt(resultado.partner_profit)}</span>
-                            </div>
-                            <div className="dist-result-chip" style={{ '--chip-color': '#8b5cf6' }}>
-                                <span className="chip-label">Ganancia Proveedor</span>
-                                <span className="chip-value">{fmt(resultado.supplier_profit)}</span>
-                            </div>
-                            <div className="dist-result-chip highlight" style={{ '--chip-color': '#ec4899' }}>
-                                <span className="chip-label">Retorno Proveedor</span>
-                                <span className="chip-value">{fmt(resultado.supplier_total_return)}</span>
-                            </div>
-                        </div>
-
-                        {resultado.cantidad > 1 && (
-                            <>
-                                <h4 style={{ margin: '1rem 0 0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>
-                                    Total por {resultado.cantidad} {resultado.cantidad > 1 ? 'unidades/kg' : 'unidad/kg'}
-                                </h4>
-                                <div className="dist-result-grid">
-                                    <div className="dist-result-chip" style={{ '--chip-color': '#3b82f6' }}>
-                                        <span className="chip-label">Venta Total</span>
-                                        <span className="chip-value">{fmt(resultado.sale_price * resultado.cantidad)}</span>
-                                    </div>
-                                    <div className="dist-result-chip" style={{ '--chip-color': '#f97316' }}>
-                                        <span className="chip-label">Sabry Total</span>
-                                        <span className="chip-value">{fmt(resultado.partner_profit * resultado.cantidad)}</span>
-                                    </div>
-                                    <div className="dist-result-chip" style={{ '--chip-color': '#ec4899' }}>
-                                        <span className="chip-label">Retorno Prov. Total</span>
-                                        <span className="chip-value">{fmt(resultado.supplier_total_return * resultado.cantidad)}</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        <button className="btn-success" onClick={handleRegistrar} style={{ width: '100%', marginTop: '1rem' }}>
-                            <Plus size={18} /> Registrar Distribución
+      {/* Tabla de historial */}
+      <div className="table-wrapper glass-card">
+        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Scale size={20} /> Historial de Distribuciones
+        </h3>
+        {distribuciones.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
+            No hay distribuciones registradas. Creá una nueva con el botón de arriba.
+          </p>
+        ) : (
+          <div className="responsive-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th>Cant.</th>
+                  <th>P. Venta</th>
+                  <th>Sabry</th>
+                  <th>Proveedor</th>
+                  <th>Retorno Prov.</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {distribuciones.map(d => (
+                  <React.Fragment key={d.id}>
+                    <tr
+                      className="clickable-row"
+                      onClick={() => setExpandedId(expandedId === d.id ? null : d.id)}
+                    >
+                      <td>{d.fecha}</td>
+                      <td>{d.producto}</td>
+                      <td>{d.cantidad || 1}</td>
+                      <td>{fmt(d.total_sale || d.sale_price * (d.cantidad || 1))}</td>
+                      <td style={{ color: '#f97316', fontWeight: 600 }}>{fmt(d.total_partner_profit || d.partner_profit * (d.cantidad || 1))}</td>
+                      <td style={{ color: '#10b981', fontWeight: 600 }}>{fmt(d.total_supplier_profit || d.supplier_profit * (d.cantidad || 1))}</td>
+                      <td style={{ color: '#8b5cf6', fontWeight: 600 }}>{fmt(d.total_supplier_return || d.supplier_total_return * (d.cantidad || 1))}</td>
+                      <td>
+                        <button
+                          className="btn-icon-danger"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
                         </button>
-                    </div>
-                )}
-            </Modal>
+                      </td>
+                    </tr>
+                    {expandedId === d.id && (
+                      <tr className="expanded-row">
+                        <td colSpan="8">
+                          <div className="expanded-detail">
+                            <div className="detail-item"><span>Precio base:</span> <strong>{fmt(d.base_price)}</strong></div>
+                            <div className="detail-item"><span>Flete:</span> <strong>{fmt(d.shipping_cost)}</strong></div>
+                            <div className="detail-item"><span>Costo total/u:</span> <strong>{fmt(d.total_cost)}</strong></div>
+                            <div className="detail-item"><span>Precio venta/u:</span> <strong>{fmt(d.sale_price)}</strong></div>
+                            <div className="detail-item"><span>Ganancia total/u:</span> <strong>{fmt(d.total_profit)}</strong></div>
+                            <div className="detail-item"><span>% Sabry:</span> <strong>{d.partner_share_percentage}%</strong></div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-            {/* Tabla de historial */}
-            <div className="table-wrapper glass-card">
-                <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Scale size={20} /> Historial de Distribuciones
-                </h3>
-                {distribuciones.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
-                        No hay distribuciones registradas. Creá una nueva con el botón de arriba.
-                    </p>
-                ) : (
-                    <div className="responsive-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Producto</th>
-                                    <th>Cant.</th>
-                                    <th>P. Venta</th>
-                                    <th>Sabry</th>
-                                    <th>Proveedor</th>
-                                    <th>Retorno Prov.</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {distribuciones.map(d => (
-                                    <React.Fragment key={d.id}>
-                                        <tr
-                                            className="clickable-row"
-                                            onClick={() => setExpandedId(expandedId === d.id ? null : d.id)}
-                                        >
-                                            <td>{d.fecha}</td>
-                                            <td>{d.producto}</td>
-                                            <td>{d.cantidad || 1}</td>
-                                            <td>{fmt(d.total_sale || d.sale_price * (d.cantidad || 1))}</td>
-                                            <td style={{ color: '#f97316', fontWeight: 600 }}>{fmt(d.total_partner_profit || d.partner_profit * (d.cantidad || 1))}</td>
-                                            <td style={{ color: '#10b981', fontWeight: 600 }}>{fmt(d.total_supplier_profit || d.supplier_profit * (d.cantidad || 1))}</td>
-                                            <td style={{ color: '#8b5cf6', fontWeight: 600 }}>{fmt(d.total_supplier_return || d.supplier_total_return * (d.cantidad || 1))}</td>
-                                            <td>
-                                                <button
-                                                    className="btn-icon-danger"
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
-                                                    title="Eliminar"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        {expandedId === d.id && (
-                                            <tr className="expanded-row">
-                                                <td colSpan="8">
-                                                    <div className="expanded-detail">
-                                                        <div className="detail-item"><span>Precio base:</span> <strong>{fmt(d.base_price)}</strong></div>
-                                                        <div className="detail-item"><span>Flete:</span> <strong>{fmt(d.shipping_cost)}</strong></div>
-                                                        <div className="detail-item"><span>Costo total/u:</span> <strong>{fmt(d.total_cost)}</strong></div>
-                                                        <div className="detail-item"><span>Precio venta/u:</span> <strong>{fmt(d.sale_price)}</strong></div>
-                                                        <div className="detail-item"><span>Ganancia total/u:</span> <strong>{fmt(d.total_profit)}</strong></div>
-                                                        <div className="detail-item"><span>% Sabry:</span> <strong>{d.partner_share_percentage}%</strong></div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
-
-            <style jsx>{`
+      <style jsx>{`
         .meat-dist-container {
           width: 100%;
         }
@@ -436,7 +462,8 @@ function MeatDistribution({ distribuciones, setDistribuciones }) {
           letter-spacing: 0.5px;
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
           padding: 0.65rem 0.75rem;
           border: 1px solid var(--border);
           border-radius: 8px;
@@ -444,9 +471,17 @@ function MeatDistribution({ distribuciones, setDistribuciones }) {
           background: var(--background);
           color: var(--text);
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          width: 100%;
+          box-sizing: border-box;
         }
 
-        .form-group input:focus {
+        .form-group select {
+          cursor: pointer;
+          appearance: auto;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
           outline: none;
           border-color: var(--primary);
           box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
@@ -595,8 +630,8 @@ function MeatDistribution({ distribuciones, setDistribuciones }) {
           }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 export default MeatDistribution;

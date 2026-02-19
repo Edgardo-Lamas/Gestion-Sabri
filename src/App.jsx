@@ -72,7 +72,7 @@ function App() {
       case 'sales': return <Sales productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} ventas={ventas} setVentas={setVentas} stock_actual={stock_actual} costoPromedio={costoPromedio} />;
       case 'expenses': return <Expenses gastos={gastos} setGastos={setGastos} />;
       case 'inventory': return <Inventory productos={productos} stock_actual={stock_actual} compras={compras} />;
-      case 'distribution': return <MeatDistribution distribuciones={distribuciones} setDistribuciones={setDistribuciones} />;
+      case 'distribution': return <MeatDistribution distribuciones={distribuciones} setDistribuciones={setDistribuciones} productos={productos} costoPromedio={costoPromedio} ventas={ventas} />;
       default: return <Dashboard />;
     }
   };

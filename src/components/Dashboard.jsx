@@ -121,7 +121,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                 </section>
 
                 <section className="glass-card chart-card">
-                    <h3>Productos Más Vendidos (Kg)</h3>
+                    <h3>Productos Más Vendidos (kg)</h3>
                     <div className="ranking-wrapper">
                         {dataVentasProducto.length > 0 ? (
                             <div className="ranking-list">

@@ -119,8 +119,8 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
                             <tr>
                                 <th>Fecha</th>
                                 <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th>Costo/kg</th>
+                                <th>Cantidad (kg)</th>
+                                <th>Costo (kg)</th>
                                 <th>Total</th>
                                 <th>Acciones</th>
                             </tr>

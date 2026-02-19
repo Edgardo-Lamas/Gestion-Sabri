@@ -218,8 +218,8 @@ const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas
                             <tr>
                                 <th>Fecha</th>
                                 <th>Producto</th>
-                                <th>Cant.</th>
-                                <th>Precio Unit.</th>
+                                <th>Cantidad (kg)</th>
+                                <th>Precio (kg)</th>
                                 <th>Total</th>
                                 <th>Ganancia</th>
                                 <th></th>
