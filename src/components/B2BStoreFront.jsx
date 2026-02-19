@@ -174,7 +174,7 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
 
         {/* Promotional Flyer */}
         <div className="promo-flyer">
-          <img src="/hero-bg1.png" alt="Flyer Promocional Sabri" />
+          <img src={`${import.meta.env.BASE_URL}hero-bg1.png`} alt="Flyer Promocional Sabri" />
         </div>
       </main>
 
@@ -313,7 +313,7 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
         .hero-section {
           position: relative;
           background: #1e293b; /* Fallback */
-          background-image: url('/hero-bg.png');
+          background-image: url('${import.meta.env.BASE_URL}hero-bg.png');
           background-size: cover;
           background-position: center;
           padding: 5rem 2rem;
