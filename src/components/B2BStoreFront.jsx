@@ -325,7 +325,7 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
         .hero-overlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(to right, rgba(15,23,42,0.9), rgba(15,23,42,0.6));
+          background: linear-gradient(to right, rgba(15,23,42,0.7), rgba(15,23,42,0.3));
           z-index: 1;
         }
 
@@ -359,13 +359,16 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
           font-weight: 800;
           line-height: 1.1;
           margin: 0;
+          color: #ffffff;
+          text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
         }
 
         .hero-subtitle {
           font-size: 1.1rem;
-          color: #cbd5e1;
+          color: #f8fafc;
           line-height: 1.6;
           max-width: 600px;
+          text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
         }
 
         .hero-features {
