@@ -52,6 +52,8 @@ h3 {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 640px) {
@@ -62,10 +64,12 @@ h3 {
 
 .table-container {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin-top: 1rem;
   border-radius: 8px;
+  box-sizing: border-box;
 }
 
 table {

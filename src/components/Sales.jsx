@@ -503,7 +503,6 @@ const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas
 
                 .table-section {
                     padding: 0;
-                    overflow-x: auto;
                 }
 
                 .table-header-row {
