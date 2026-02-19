@@ -9,7 +9,8 @@ import {
   Package,
   Scale,
   Menu,
-  X
+  X,
+  HelpCircle
 } from 'lucide-react';
 
 import Dashboard from './components/Dashboard';
@@ -25,6 +26,7 @@ function App() {
   const [currentView, setCurrentView] = useState('app');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Estado persistente con nuevos nombres de entidades/campos
   const [productos, setProductos] = useLocalStorage('sabri_v2_productos', []);
@@ -161,14 +163,78 @@ function App() {
 
           <main className="content">
             <header className="page-header">
-              <button className="mobile-menu-btn" onClick={toggleSidebar}>
-                <Menu size={24} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button className="mobile-menu-btn" onClick={toggleSidebar}>
+                  <Menu size={24} />
+                </button>
+                <h1>{navItems.find(i => i.id === activeTab).label}</h1>
+              </div>
+              <button
+                className="help-btn"
+                onClick={() => setIsGuideOpen(true)}
+                title="Ver Guía de Uso"
+              >
+                <HelpCircle size={22} />
+                <span className="help-text">Guía de Uso</span>
               </button>
-              <h1>{navItems.find(i => i.id === activeTab).label}</h1>
             </header>
             <div className="view-container">
               {renderContent()}
             </div>
+
+            {/* Guide Modal */}
+            {isGuideOpen && (
+              <div className="modal-overlay" onClick={() => setIsGuideOpen(false)}>
+                <div className="modal-content guide-modal" onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Guía de Uso: Catálogo B2B</h2>
+                    <button className="icon-btn delete" onClick={() => setIsGuideOpen(false)}>
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="modal-body user-guide">
+                    <h3>1. Compras (Ingreso de Mercadería)</h3>
+                    <p>
+                      Todo empieza aquí. Cada vez que compras carne al frigorífico, regístralo en la pestaña <strong>Compras</strong>.
+                      Al guardar una compra, el sistema suma automáticamente esos kilos a tu <strong>Stock</strong>. Si es un corte nuevo, te pedirá que lo crees primero.
+                    </p>
+
+                    <h3>2. Ventas (Salida de Mercadería)</h3>
+                    <p>
+                      Cuando vendes a un cliente, ve a <strong>Ventas</strong>. Al registrar la venta, el sistema restará esos kilos de tu <strong>Stock</strong> disponible.
+                      Además, el sistema es inteligente (usa método FIFO): siempre descontará primero los kilos de la compra más antigua que tengas ingresada.
+                    </p>
+
+                    <h3>3. Distribución (Control de Carniceros)</h3>
+                    <p>
+                      Si le entregas carne a tus empleados/carniceros para que la trabajen o vendan en mostrador, anótalo en <strong>Distribución</strong>.
+                      Esto te permite saber exactamente cuánta mercadería (y de qué valor) tiene cada empleado bajo su responsabilidad en todo momento.
+                    </p>
+
+                    <h3>4. Resumen (Tablero Principal)</h3>
+                    <p>
+                      El <strong>Resumen</strong> es tu centro de control. Aquí puedes ver de un vistazo tus ganancias, el valor total del stock que tienes inmovilizado, tus ventas del día, los gastos operativos (pestaña Gastos) y los productos que más salen.
+                    </p>
+
+                    <h3>5. Catálogo Público (Landing Page B2B)</h3>
+                    <p>
+                      Es la vidriera para tus clientes mayoristas. Muestra tu stock real.
+                      <br />
+                      - <strong>Precios:</strong> Si vas a <i>Stock</i> y dejas el "Precio Catálogo" vacío, se mostrará al cliente tu Costo Promedio. Si escribes un número, se mostrará ese precio manual.
+                      <br />
+                      - <strong>Ocultar:</strong> Desde <i>Stock</i> también puedes ocultar cortes temporalmente sin borrarlos.
+                      <br />
+                      - <strong>Pedidos:</strong> Tus clientes agregarán kilos al carrito y presionarán "Enviar Pedido", lo cual te llegará directamente a tu WhatsApp con todo detallado.
+                    </p>
+                  </div>
+                  <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '2rem' }}>
+                    <button className="primary-btn" onClick={() => setIsGuideOpen(false)}>
+                      Entendido
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </main>
 
           <style jsx>{`
@@ -324,7 +390,45 @@ function App() {
             margin-bottom: 2rem;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 1rem;
+          }
+
+          .help-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+          }
+
+          .help-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+          }
+
+          .user-guide h3 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+          }
+          
+          .user-guide h3:first-child {
+            margin-top: 0;
+          }
+
+          .user-guide p {
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
           }
 
           .mobile-menu-btn {
