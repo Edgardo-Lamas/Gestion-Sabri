@@ -93,7 +93,7 @@ function App() {
     <ToastProvider>
       {currentView === 'storefront' ? (
         <React.Fragment>
-          <B2BStoreFront productos={productos} />
+          <B2BStoreFront productos={productos} costoPromedio={costoPromedio} />
           {/* Un botón temporal para poder volver al admin mientras desarrollamos */}
           <button
             onClick={() => setCurrentView('app')}

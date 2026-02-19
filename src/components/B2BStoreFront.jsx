@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ShoppingCart, Phone, Star, TrendingUp, X, Plus, Minus, Search, PackageOpen } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
-const B2BStoreFront = ({ productos }) => {
+const B2BStoreFront = ({ productos, costoPromedio }) => {
   const { addToast } = useToast();
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -10,15 +10,21 @@ const B2BStoreFront = ({ productos }) => {
 
   // Para el MVP, simulamos categorías y descripciones genéricas si no existen
   const catalogProducts = useMemo(() => {
-    return productos.map(p => ({
-      ...p,
-      precio_b2b: p.precio_b2b || 0, // Fallback si aún no se lo asignaron
-      descripcion: p.descripcion || 'Corte de primera calidad, ideal para venta en mostrador o gastronomía.',
-      categoria: p.categoria || 'Vacuno',
-      // Placeholder genérico de carne si no hay URL
-      imagen_url: p.imagen_url || 'https://images.unsplash.com/photo-1607623814075-e51df1bd682f?auto=format&fit=crop&q=80&w=800'
-    })).filter(p => p.mostrar_en_catalogo !== false); // Por defecto se muestran todos salvo que se oculten
-  }, [productos]);
+    return productos.map(p => {
+      // El precio B2B sugerido es el configurado manualmente, o el costo promedio (si no configuró nada)
+      const precio_sugerido = p.precio_b2b > 0
+        ? p.precio_b2b
+        : (costoPromedio[p.id] || 0);
+
+      return {
+        ...p,
+        precio_b2b_calculado: precio_sugerido, // Guardamos este valor final para usar en la vista
+        descripcion: p.descripcion || 'Corte de primera calidad, ideal para venta en mostrador o gastronomía.',
+        categoria: p.categoria || 'Vacuno',
+        imagen_url: p.imagen_url || 'https://images.unsplash.com/photo-1607623814075-e51df1bd682f?auto=format&fit=crop&q=80&w=800'
+      };
+    }).filter(p => p.mostrar_en_catalogo !== false);
+  }, [productos, costoPromedio]);
 
   const filteredProducts = catalogProducts.filter(p =>
     p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
@@ -51,25 +57,25 @@ const B2BStoreFront = ({ productos }) => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.precio_b2b * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (item.precio_b2b_calculado * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
 
-    let message = `*NUEVO PEDIDO MAYORISTA - GESTIÓN SABRI* 🍖\n\n`;
-    message += `Hola Sabri, te paso este pedido web:\n\n`;
+    let message = `* NUEVO PEDIDO MAYORISTA - GESTIÓN SABRI * 🍖\n\n`;
+    message += `Hola Sabri, te paso este pedido web: \n\n`;
 
     cart.forEach(item => {
-      message += `▪️ *${item.nombre}*\n`;
-      if (item.precio_b2b > 0) {
-        message += `   ${item.quantity} kg x ${formatPrice(item.precio_b2b)} = *${formatPrice(item.precio_b2b * item.quantity)}*\n`;
+      message += `▪️ * ${item.nombre}*\n`;
+      if (item.precio_b2b_calculado > 0) {
+        message += `   ${item.quantity} kg x ${formatPrice(item.precio_b2b_calculado)} = * ${formatPrice(item.precio_b2b_calculado * item.quantity)}*\n`;
       } else {
-        message += `   ${item.quantity} kg (A cotizar)\n`;
+        message += `   ${item.quantity} kg(A cotizar) \n`;
       }
     });
 
-    message += `\n*TOTAL ESTIMADO: ${formatPrice(cartTotal)}*\n\n`;
+    message += `\n * TOTAL ESTIMADO: ${formatPrice(cartTotal)}*\n\n`;
     message += `(Aguardando confirmación de disponibilidad y envío)`;
 
     const encodedMessage = encodeURIComponent(message);
@@ -135,7 +141,7 @@ const B2BStoreFront = ({ productos }) => {
             {filteredProducts.map(product => (
               <div key={product.id} className="product-card">
                 <div className="product-image" style={{ backgroundImage: `url(${product.imagen_url})` }}>
-                  {product.precio_b2b <= 0 && <div className="no-price-badge">Consultar Precio</div>}
+                  {product.precio_b2b_calculado <= 0 && <div className="no-price-badge">Consultar Precio</div>}
                 </div>
                 <div className="product-info">
                   <span className="category-tag">{product.categoria}</span>
@@ -144,9 +150,9 @@ const B2BStoreFront = ({ productos }) => {
 
                   <div className="product-footer">
                     <div className="price-container">
-                      {product.precio_b2b > 0 ? (
+                      {product.precio_b2b_calculado > 0 ? (
                         <>
-                          <span className="price-value">{formatPrice(product.precio_b2b)}</span>
+                          <span className="price-value">{formatPrice(product.precio_b2b_calculado)}</span>
                           <span className="price-unit">por kg</span>
                         </>
                       ) : (
@@ -190,7 +196,7 @@ const B2BStoreFront = ({ productos }) => {
                   <div key={item.id} className="cart-item">
                     <div className="cart-item-info">
                       <span className="item-name">{item.nombre}</span>
-                      <span className="item-price">{formatPrice(item.precio_b2b)} /kg</span>
+                      <span className="item-price">{formatPrice(item.precio_b2b_calculado)} /kg</span>
                     </div>
                     <div className="item-actions">
                       <div className="quantity-control">
@@ -199,7 +205,7 @@ const B2BStoreFront = ({ productos }) => {
                         <button onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
                       </div>
                       <span className="item-total">
-                        {item.precio_b2b > 0 ? formatPrice(item.precio_b2b * item.quantity) : 'A cotizar'}
+                        {item.precio_b2b_calculado > 0 ? formatPrice(item.precio_b2b_calculado * item.quantity) : 'A cotizar'}
                       </span>
                     </div>
                   </div>
