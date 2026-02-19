@@ -171,6 +171,11 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
             ))}
           </div>
         )}
+
+        {/* Promotional Flyer */}
+        <div className="promo-flyer">
+          <img src="/hero-bg1.png" alt="Flyer Promocional Sabri" />
+        </div>
       </main>
 
       {/* Shopping Cart Sidebar */}
@@ -749,6 +754,22 @@ const B2BStoreFront = ({ productos, costoPromedio }) => {
         .checkout-btn:hover {
           background: #1ebc5a;
           transform: translateY(-2px);
+        }
+
+        /* Promo Flyer */
+        .promo-flyer {
+          margin-top: 4rem;
+          width: 100%;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+        }
+
+        .promo-flyer img {
+          width: 100%;
+          height: auto;
+          display: block;
+          object-fit: cover;
         }
 
         @media (max-width: 768px) {
