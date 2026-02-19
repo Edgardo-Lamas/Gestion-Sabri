@@ -7,6 +7,7 @@ import {
   BadgeDollarSign,
   Receipt,
   Package,
+  Scale,
   Menu,
   X
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import Purchases from './components/Purchases';
 import Sales from './components/Sales';
 import Expenses from './components/Expenses';
 import Inventory from './components/Inventory';
+import MeatDistribution from './components/MeatDistribution';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -26,6 +28,7 @@ function App() {
   const [compras, setCompras] = useLocalStorage('sabri_v2_compras', []);
   const [ventas, setVentas] = useLocalStorage('sabri_v2_ventas', []);
   const [gastos, setGastos] = useLocalStorage('sabri_v2_gastos', []);
+  const [distribuciones, setDistribuciones] = useLocalStorage('sabri_v2_distribuciones', []);
 
   // Stock calculado para la interfaz
   const stock_actual = useMemo(() => {
@@ -35,6 +38,23 @@ function App() {
       stock[c.producto_id] += c.cantidad_disponible;
     });
     return stock;
+  }, [compras]);
+
+  // Costo promedio ponderado por producto (solo lotes con stock disponible)
+  const costoPromedio = useMemo(() => {
+    const costos = {};
+    compras.forEach(c => {
+      if (c.cantidad_disponible > 0) {
+        if (!costos[c.producto_id]) costos[c.producto_id] = { totalCosto: 0, totalKg: 0 };
+        costos[c.producto_id].totalCosto += c.costo_unitario * c.cantidad_disponible;
+        costos[c.producto_id].totalKg += c.cantidad_disponible;
+      }
+    });
+    const resultado = {};
+    Object.entries(costos).forEach(([id, data]) => {
+      resultado[id] = data.totalKg > 0 ? data.totalCosto / data.totalKg : 0;
+    });
+    return resultado;
   }, [compras]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -49,9 +69,10 @@ function App() {
     switch (activeTab) {
       case 'dashboard': return <Dashboard compras={compras} ventas={ventas} gastos={gastos} />;
       case 'purchases': return <Purchases productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} />;
-      case 'sales': return <Sales productos={productos} compras={compras} setCompras={setCompras} ventas={ventas} setVentas={setVentas} stock_actual={stock_actual} />;
+      case 'sales': return <Sales productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} ventas={ventas} setVentas={setVentas} stock_actual={stock_actual} costoPromedio={costoPromedio} />;
       case 'expenses': return <Expenses gastos={gastos} setGastos={setGastos} />;
       case 'inventory': return <Inventory productos={productos} stock_actual={stock_actual} compras={compras} />;
+      case 'distribution': return <MeatDistribution distribuciones={distribuciones} setDistribuciones={setDistribuciones} />;
       default: return <Dashboard />;
     }
   };
@@ -62,6 +83,7 @@ function App() {
     { id: 'sales', label: 'Ventas', icon: BadgeDollarSign },
     { id: 'expenses', label: 'Gastos', icon: Receipt },
     { id: 'inventory', label: 'Stock', icon: Package },
+    { id: 'distribution', label: 'Distribución', icon: Scale },
   ];
 
   return (

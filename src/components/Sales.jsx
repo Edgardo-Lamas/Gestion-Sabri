@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { BadgeDollarSign, Trash2, Plus, Search, Calendar, Package } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { BadgeDollarSign, Trash2, Plus, Search, Calendar, Package, Percent, Info, TrendingUp } from 'lucide-react';
 import { ejecutarAlgoritmoVentaFIFO } from '../utils/fifo';
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual }) => {
+const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas, stock_actual, costoPromedio }) => {
     const { addToast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -17,8 +17,80 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
         producto_id: '',
         cantidad_vendida: '',
         precio_venta_unitario: '',
+        margen_ganancia: '',
         fecha: new Date().toISOString().split('T')[0]
     });
+
+    // Info del producto seleccionado para el panel de contexto
+    const productoSeleccionado = useMemo(() => {
+        if (!nuevaVenta.producto_id) return null;
+        const prod = productos.find(p => p.id === nuevaVenta.producto_id);
+        const costo = costoPromedio[nuevaVenta.producto_id] || 0;
+        const ultimaVenta = ventas.find(v => v.producto_id === nuevaVenta.producto_id);
+        const lotes = compras
+            .filter(c => c.producto_id === nuevaVenta.producto_id && c.cantidad_disponible > 0)
+            .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+        return { prod, costo, ultimaVenta, lotes };
+    }, [nuevaVenta.producto_id, productos, costoPromedio, ventas, compras]);
+
+    // Al seleccionar un producto, autocompletar precio y margen
+    const handleProductoChange = (producto_id) => {
+        if (!producto_id) {
+            setNuevaVenta({ ...nuevaVenta, producto_id: '', precio_venta_unitario: '', margen_ganancia: '' });
+            return;
+        }
+
+        const prod = productos.find(p => p.id === producto_id);
+        const costo = costoPromedio[producto_id] || 0;
+        const ultimaVenta = ventas.find(v => v.producto_id === producto_id);
+
+        let precio = '';
+        let margen = prod?.margen_ganancia || '';
+
+        if (margen && costo > 0) {
+            // Calcular precio desde margen guardado
+            precio = (costo * (1 + parseFloat(margen) / 100)).toFixed(2);
+        } else if (ultimaVenta) {
+            // Usar último precio de venta
+            precio = ultimaVenta.precio_venta_unitario.toString();
+            // Calcular margen inverso si hay costo
+            if (costo > 0) {
+                margen = (((ultimaVenta.precio_venta_unitario - costo) / costo) * 100).toFixed(1);
+            }
+        }
+
+        setNuevaVenta({ ...nuevaVenta, producto_id, precio_venta_unitario: precio, margen_ganancia: margen });
+    };
+
+    // Al cambiar el margen, recalcular el precio
+    const handleMargenChange = (margenStr) => {
+        const costo = costoPromedio[nuevaVenta.producto_id] || 0;
+        let precio = nuevaVenta.precio_venta_unitario;
+
+        if (margenStr && costo > 0) {
+            const margen = parseFloat(margenStr);
+            if (!isNaN(margen)) {
+                precio = (costo * (1 + margen / 100)).toFixed(2);
+            }
+        }
+
+        setNuevaVenta({ ...nuevaVenta, margen_ganancia: margenStr, precio_venta_unitario: precio });
+    };
+
+    // Al cambiar el precio manualmente, recalcular el margen
+    const handlePrecioChange = (precioStr) => {
+        const costo = costoPromedio[nuevaVenta.producto_id] || 0;
+        let margen = nuevaVenta.margen_ganancia;
+
+        if (precioStr && costo > 0) {
+            const precio = parseFloat(precioStr);
+            if (!isNaN(precio)) {
+                margen = (((precio - costo) / costo) * 100).toFixed(1);
+            }
+        }
+
+        setNuevaVenta({ ...nuevaVenta, precio_venta_unitario: precioStr, margen_ganancia: margen });
+    };
 
     const handleVenta = (e) => {
         e.preventDefault();
@@ -69,6 +141,16 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                 ganancia: ganancia
             };
 
+            // Persistir margen en el producto para futuras ventas
+            if (nuevaVenta.margen_ganancia) {
+                const productosActualizados = productos.map(p =>
+                    p.id === nuevaVenta.producto_id
+                        ? { ...p, margen_ganancia: nuevaVenta.margen_ganancia }
+                        : p
+                );
+                setProductos(productosActualizados);
+            }
+
             setCompras(nuevas_compras);
             setVentas([registro_venta, ...ventas]);
 
@@ -80,6 +162,7 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                 producto_id: '',
                 cantidad_vendida: '',
                 precio_venta_unitario: '',
+                margen_ganancia: '',
                 fecha: new Date().toISOString().split('T')[0]
             });
         } catch (err) {
@@ -214,7 +297,7 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                             <Package size={18} className="input-icon" />
                             <select
                                 value={nuevaVenta.producto_id}
-                                onChange={(e) => setNuevaVenta({ ...nuevaVenta, producto_id: e.target.value })}
+                                onChange={(e) => handleProductoChange(e.target.value)}
                                 required
                             >
                                 <option value="">Seleccionar producto...</option>
@@ -226,6 +309,45 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                             </select>
                         </div>
                     </div>
+
+                    {/* Panel de contexto de costos */}
+                    {productoSeleccionado && productoSeleccionado.costo > 0 && (
+                        <div className="cost-context-panel">
+                            <div className="context-header">
+                                <Info size={16} />
+                                <span>Info de precio — {productoSeleccionado.prod?.nombre}</span>
+                            </div>
+                            <div className="context-metrics">
+                                <div className="context-metric">
+                                    <span className="metric-label">Costo promedio stock</span>
+                                    <span className="metric-value">${productoSeleccionado.costo.toFixed(2)}/kg</span>
+                                </div>
+                                {productoSeleccionado.ultimaVenta && (
+                                    <div className="context-metric">
+                                        <span className="metric-label">Último precio venta</span>
+                                        <span className="metric-value">${productoSeleccionado.ultimaVenta.precio_venta_unitario.toFixed(2)}/kg</span>
+                                    </div>
+                                )}
+                                {nuevaVenta.margen_ganancia && (
+                                    <div className="context-metric highlight">
+                                        <span className="metric-label">Margen ganancia</span>
+                                        <span className="metric-value accent">{parseFloat(nuevaVenta.margen_ganancia).toFixed(1)}%</span>
+                                    </div>
+                                )}
+                            </div>
+                            {productoSeleccionado.lotes.length > 1 && (
+                                <div className="context-lotes">
+                                    <span className="lotes-title">⚠ {productoSeleccionado.lotes.length} lotes con costos distintos:</span>
+                                    {productoSeleccionado.lotes.map((l, i) => (
+                                        <div key={i} className="lote-item">
+                                            <span>Lote {new Date(l.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}:</span>
+                                            <span>${l.costo_unitario.toFixed(2)}/kg ({l.cantidad_disponible.toFixed(2)} kg disp.)</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="form-row">
                         <div className="form-group">
@@ -251,19 +373,42 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                         </div>
                     </div>
 
-                    <div className="form-group">
-                        <label>Precio de Venta Unitario ($)</label>
-                        <div className="input-wrapper">
-                            <span className="currency-symbol">$</span>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                placeholder="0.00"
-                                value={nuevaVenta.precio_venta_unitario}
-                                onChange={(e) => setNuevaVenta({ ...nuevaVenta, precio_venta_unitario: e.target.value })}
-                                required
-                            />
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Margen de ganancia (%)</label>
+                            <div className="input-wrapper">
+                                <Percent size={16} className="input-icon-small" />
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    placeholder="Ej: 30"
+                                    value={nuevaVenta.margen_ganancia}
+                                    onChange={(e) => handleMargenChange(e.target.value)}
+                                    className="margin-input"
+                                />
+                            </div>
+                            <small className="field-hint">Se recuerda para futuras ventas</small>
+                        </div>
+                        <div className="form-group">
+                            <label>Precio de Venta Unitario ($)</label>
+                            <div className="input-wrapper">
+                                <span className="currency-symbol">$</span>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    placeholder="0.00"
+                                    value={nuevaVenta.precio_venta_unitario}
+                                    onChange={(e) => handlePrecioChange(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            {nuevaVenta.precio_venta_unitario && nuevaVenta.cantidad_vendida && (
+                                <small className="field-hint total-hint">
+                                    <TrendingUp size={12} /> Total: ${(parseFloat(nuevaVenta.precio_venta_unitario) * parseFloat(nuevaVenta.cantidad_vendida || 0)).toFixed(2)}
+                                </small>
+                            )}
                         </div>
                     </div>
 
@@ -517,6 +662,121 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                     margin-top: 1rem;
                 }
 
+                /* Cost Context Panel */
+                .cost-context-panel {
+                    background: linear-gradient(135deg, rgba(249, 115, 22, 0.04), rgba(59, 130, 246, 0.04));
+                    border: 1px solid rgba(249, 115, 22, 0.15);
+                    border-radius: 12px;
+                    padding: 1rem;
+                    animation: fadeIn 0.3s ease;
+                }
+
+                .context-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    color: var(--primary);
+                    margin-bottom: 0.75rem;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 1px solid rgba(249, 115, 22, 0.1);
+                }
+
+                .context-metrics {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                    gap: 0.75rem;
+                    margin-bottom: 0.5rem;
+                }
+
+                .context-metric {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.2rem;
+                    padding: 0.5rem 0.75rem;
+                    background: rgba(255, 255, 255, 0.7);
+                    border-radius: 8px;
+                    border-left: 3px solid var(--border);
+                }
+
+                .context-metric.highlight {
+                    border-left-color: var(--primary);
+                    background: rgba(249, 115, 22, 0.06);
+                }
+
+                .metric-label {
+                    font-size: 0.7rem;
+                    font-weight: 600;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
+                }
+
+                .metric-value {
+                    font-size: 0.95rem;
+                    font-weight: 700;
+                    color: var(--text);
+                }
+
+                .metric-value.accent {
+                    color: var(--primary);
+                }
+
+                .context-lotes {
+                    margin-top: 0.5rem;
+                    padding-top: 0.5rem;
+                    border-top: 1px dashed rgba(249, 115, 22, 0.15);
+                }
+
+                .lotes-title {
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    color: #f59e0b;
+                    display: block;
+                    margin-bottom: 0.25rem;
+                }
+
+                .lote-item {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.8rem;
+                    color: var(--text-muted);
+                    padding: 0.2rem 0;
+                }
+
+                /* Margin field */
+                .input-icon-small {
+                    position: absolute;
+                    left: 0.75rem;
+                    color: var(--text-muted);
+                    pointer-events: none;
+                }
+
+                .margin-input {
+                    padding-left: 2rem !important;
+                }
+
+                .field-hint {
+                    font-size: 0.72rem;
+                    color: var(--text-muted);
+                    font-style: italic;
+                }
+
+                .total-hint {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.3rem;
+                    color: var(--primary);
+                    font-weight: 600;
+                    font-style: normal;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+
                 @media (max-width: 640px) {
                     .view-header {
                         flex-direction: column;
@@ -524,6 +784,13 @@ const Sales = ({ productos, compras, setCompras, ventas, setVentas, stock_actual
                     }
                     .form-row {
                         grid-template-columns: 1fr;
+                    }
+                    .context-metrics {
+                        grid-template-columns: 1fr;
+                    }
+                    .lote-item {
+                        flex-direction: column;
+                        gap: 0.1rem;
                     }
                 }
             `}</style>
