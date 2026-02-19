@@ -14,11 +14,6 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    BarChart,
-    Bar,
-    PieChart,
-    Pie,
-    Cell,
     Legend
 } from 'recharts';
 
@@ -57,10 +52,13 @@ const Dashboard = ({ compras, ventas, gastos }) => {
     const dataVentasProducto = useMemo(() => {
         const data = {};
         (ventas || []).forEach(v => {
+            if (!v.producto_nombre) return;
             if (!data[v.producto_nombre]) data[v.producto_nombre] = 0;
-            data[v.producto_nombre] += v.cantidad;
+            data[v.producto_nombre] += (v.cantidad_vendida || v.cantidad || 0);
         });
-        return Object.entries(data).map(([name, value]) => ({ name, value }));
+        return Object.entries(data)
+            .map(([name, value]) => ({ name, value: value || 0 }))
+            .sort((a, b) => b.value - a.value);
     }, [ventas]);
 
     const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -93,6 +91,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
             <div className="charts-grid">
                 <section className="glass-card chart-card">
                     <h3>Ingresos vs Gastos (Última Actividad)</h3>
+                    <p className="chart-explainer">El <strong style={{ color: '#10b981' }}>área verde</strong> representa los ingresos por ventas y el <strong style={{ color: '#ef4444' }}>área roja</strong> los gastos de cada día. Cuando el verde está por encima del rojo, hubo ganancia ese día.</p>
                     <div className="chart-wrapper">
                         <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={dataIngresosGastos}>
@@ -123,33 +122,33 @@ const Dashboard = ({ compras, ventas, gastos }) => {
 
                 <section className="glass-card chart-card">
                     <h3>Productos Más Vendidos (Kg)</h3>
-                    <div className="chart-wrapper">
+                    <div className="ranking-wrapper">
                         {dataVentasProducto.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={dataVentasProducto}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {dataVentasProducto.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                    />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <div className="ranking-list">
+                                {dataVentasProducto.map((item, index) => {
+                                    const maxValue = dataVentasProducto[0]?.value || 1;
+                                    const pct = (item.value / maxValue) * 100;
+                                    return (
+                                        <div key={item.name} className="ranking-item">
+                                            <span className="ranking-pos" style={{ background: COLORS[index % COLORS.length] + '20', color: COLORS[index % COLORS.length] }}>
+                                                {index + 1}
+                                            </span>
+                                            <div className="ranking-info">
+                                                <div className="ranking-header">
+                                                    <span className="ranking-name">{item.name}</span>
+                                                    <span className="ranking-value">{item.value.toFixed(1)} kg</span>
+                                                </div>
+                                                <div className="ranking-bar-bg">
+                                                    <div className="ranking-bar-fill" style={{ width: `${pct}%`, background: COLORS[index % COLORS.length] }}></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         ) : (
                             <div className="no-data">
-                                <p>Registra ventas para ver estadísticas</p>
+                                <p>Registra ventas para ver el ranking</p>
                             </div>
                         )}
                     </div>
@@ -238,9 +237,16 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                 }
                 
                 .chart-card h3 {
-                    margin-bottom: 1.5rem;
+                    margin-bottom: 0.5rem;
                     font-size: 1.1rem;
                     color: var(--text);
+                }
+
+                .chart-explainer {
+                    font-size: 0.78rem;
+                    color: var(--text-muted);
+                    margin-bottom: 1rem;
+                    line-height: 1.4;
                 }
                 
                 .chart-wrapper {
@@ -254,6 +260,76 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                 .no-data {
                     color: var(--text-muted);
                     font-style: italic;
+                }
+
+                .ranking-wrapper {
+                    min-height: 200px;
+                }
+
+                .ranking-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+
+                .ranking-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+
+                .ranking-pos {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 800;
+                    font-size: 0.85rem;
+                    flex-shrink: 0;
+                }
+
+                .ranking-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .ranking-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: baseline;
+                    margin-bottom: 0.3rem;
+                }
+
+                .ranking-name {
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                    color: var(--text);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .ranking-value {
+                    font-size: 0.8rem;
+                    font-weight: 700;
+                    color: var(--text-muted);
+                    flex-shrink: 0;
+                    margin-left: 0.5rem;
+                }
+
+                .ranking-bar-bg {
+                    height: 6px;
+                    background: #e2e8f0;
+                    border-radius: 3px;
+                    overflow: hidden;
+                }
+
+                .ranking-bar-fill {
+                    height: 100%;
+                    border-radius: 3px;
+                    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
                 .stat-card {
