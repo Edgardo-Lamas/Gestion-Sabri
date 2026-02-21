@@ -1,0 +1,16 @@
+ALTER TABLE public.distribuciones
+  ALTER COLUMN empleado_id DROP NOT NULL,
+  ALTER COLUMN monto_total DROP NOT NULL,
+  ALTER COLUMN saldo_pendiente DROP NOT NULL,
+  ALTER COLUMN estado_pago DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC,
+  ADD COLUMN IF NOT EXISTS partner_share_percentage NUMERIC,
+  ADD COLUMN IF NOT EXISTS total_cost NUMERIC,
+  ADD COLUMN IF NOT EXISTS total_profit NUMERIC,
+  ADD COLUMN IF NOT EXISTS partner_profit NUMERIC,
+  ADD COLUMN IF NOT EXISTS supplier_profit NUMERIC,
+  ADD COLUMN IF NOT EXISTS supplier_total_return NUMERIC,
+  ADD COLUMN IF NOT EXISTS total_sale NUMERIC,
+  ADD COLUMN IF NOT EXISTS total_partner_profit NUMERIC,
+  ADD COLUMN IF NOT EXISTS total_supplier_profit NUMERIC,
+  ADD COLUMN IF NOT EXISTS total_supplier_return NUMERIC;

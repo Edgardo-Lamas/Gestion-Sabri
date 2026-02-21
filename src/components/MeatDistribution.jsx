@@ -4,7 +4,9 @@ import { calculateMeatSaleDistribution } from '../utils/meatDistribution';
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-function MeatDistribution({ distribuciones, setDistribuciones, productos = [], costoPromedio = {}, ventas = [] }) {
+import { supabase } from '../lib/supabase';
+
+function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, ventas = [], onUpdate }) {
   const { addToast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -73,39 +75,51 @@ function MeatDistribution({ distribuciones, setDistribuciones, productos = [], c
     setResultado({ ...dist, cantidad, producto: form.producto || 'Sin nombre' });
   };
 
-  const handleRegistrar = () => {
+  const handleRegistrar = async () => {
     if (!resultado) return;
     const cantidad = resultado.cantidad;
     const nuevaDistribucion = {
-      id: Date.now(),
       fecha: new Date().toISOString().split('T')[0],
-      producto: resultado.producto,
-      cantidad,
-      base_price: parseFloat(form.base_price),
+      producto_id: productos.find(p => p.nombre === resultado.producto)?.id || null,
+      cantidad_kg: cantidad,
+      precio_base: parseFloat(form.base_price),
       shipping_cost: parseFloat(form.shipping_cost),
-      sale_price: resultado.sale_price,
+      precio_venta: resultado.sale_price,
       partner_share_percentage: parseFloat(form.partner_share_percentage),
       total_cost: resultado.total_cost,
       total_profit: resultado.total_profit,
       partner_profit: resultado.partner_profit,
       supplier_profit: resultado.supplier_profit,
       supplier_total_return: resultado.supplier_total_return,
-      // Totales multiplicados por cantidad
+      // Totales calculados (podríamos quitarlos si no están en DB, pero los enviamos por ahora)
       total_sale: resultado.sale_price * cantidad,
       total_partner_profit: resultado.partner_profit * cantidad,
       total_supplier_profit: resultado.supplier_profit * cantidad,
       total_supplier_return: resultado.supplier_total_return * cantidad,
     };
-    setDistribuciones([nuevaDistribucion, ...distribuciones]);
+
+    const { error } = await supabase.from('distribuciones').insert([nuevaDistribucion]);
+
+    if (error) {
+      addToast('Error registrando: ' + error.message, 'error');
+      return;
+    }
+
     addToast('Distribución registrada correctamente', 'success');
     setForm({ producto: '', base_price: '', shipping_cost: '', sale_price: '', partner_share_percentage: '50', cantidad: '1' });
     setResultado(null);
     setShowModal(false);
+    if (onUpdate) onUpdate();
   };
 
-  const handleDelete = (id) => {
-    setDistribuciones(distribuciones.filter(d => d.id !== id));
-    addToast('Registro eliminado', 'success');
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('distribuciones').delete().eq('id', id);
+    if (error) {
+      addToast('Error al eliminar', 'error');
+    } else {
+      addToast('Registro eliminado', 'success');
+      if (onUpdate) onUpdate();
+    }
   };
 
   // Totales del historial
@@ -319,10 +333,10 @@ function MeatDistribution({ distribuciones, setDistribuciones, productos = [], c
                       <tr className="expanded-row">
                         <td colSpan="8">
                           <div className="expanded-detail">
-                            <div className="detail-item"><span>Precio base:</span> <strong>{fmt(d.base_price)}</strong></div>
+                            <div className="detail-item"><span>Precio base:</span> <strong>{fmt(d.base_price || d.precio_base)}</strong></div>
                             <div className="detail-item"><span>Flete:</span> <strong>{fmt(d.shipping_cost)}</strong></div>
                             <div className="detail-item"><span>Costo total/u:</span> <strong>{fmt(d.total_cost)}</strong></div>
-                            <div className="detail-item"><span>Precio venta/u:</span> <strong>{fmt(d.sale_price)}</strong></div>
+                            <div className="detail-item"><span>Precio venta/u:</span> <strong>{fmt(d.sale_price || d.precio_venta)}</strong></div>
                             <div className="detail-item"><span>Ganancia total/u:</span> <strong>{fmt(d.total_profit)}</strong></div>
                             <div className="detail-item"><span>% Sabry:</span> <strong>{d.partner_share_percentage}%</strong></div>
                           </div>

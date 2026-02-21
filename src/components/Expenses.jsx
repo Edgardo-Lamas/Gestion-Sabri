@@ -3,7 +3,9 @@ import { Receipt, Plus, Trash2, Search, Calendar, DollarSign } from 'lucide-reac
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-const Expenses = ({ gastos, setGastos }) => {
+import { supabase } from '../lib/supabase';
+
+const Expenses = ({ gastos, onUpdate }) => {
     const { addToast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -18,7 +20,7 @@ const Expenses = ({ gastos, setGastos }) => {
         fecha: new Date().toISOString().split('T')[0]
     });
 
-    const addGasto = (e) => {
+    const addGasto = async (e) => {
         e.preventDefault();
         if (!gasto.concepto || !gasto.monto) {
             addToast('Por favor completa todos los campos', 'error');
@@ -26,12 +28,19 @@ const Expenses = ({ gastos, setGastos }) => {
         }
 
         const nuevoGasto = {
-            ...gasto,
-            id: crypto.randomUUID(),
-            monto: parseFloat(gasto.monto)
+            concepto: gasto.concepto,
+            monto: parseFloat(gasto.monto),
+            fecha: gasto.fecha,
+            categoria: 'General' // Valor por defecto si no lo tiene en este componente
         };
 
-        setGastos([nuevoGasto, ...gastos]);
+        const { error } = await supabase.from('gastos').insert([nuevoGasto]);
+
+        if (error) {
+            addToast('Error registrando gasto: ' + error.message, 'error');
+            return;
+        }
+
         setGasto({
             concepto: '',
             monto: '',
@@ -39,12 +48,18 @@ const Expenses = ({ gastos, setGastos }) => {
         });
         setIsModalOpen(false);
         addToast('Gasto registrado exitosamente', 'success');
+        if (onUpdate) onUpdate();
     };
 
-    const deleteGasto = (id) => {
+    const deleteGasto = async (id) => {
         if (window.confirm('¿Eliminar este gasto?')) {
-            setGastos(gastos.filter(g => g.id !== id));
-            addToast('Gasto eliminado', 'info');
+            const { error } = await supabase.from('gastos').delete().eq('id', id);
+            if (error) {
+                addToast('Error eliminando', 'error');
+            } else {
+                addToast('Gasto eliminado', 'info');
+                if (onUpdate) onUpdate();
+            }
         }
     };
 

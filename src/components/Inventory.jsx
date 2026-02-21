@@ -1,24 +1,41 @@
 import React from 'react';
 
 import { useToast } from '../context/ToastContext';
+import { supabase } from '../lib/supabase';
 
-const Inventory = ({ productos, setProductos, stock_actual, compras }) => {
+const Inventory = ({ productos, stock_actual, compras, onUpdate }) => {
     const { addToast } = useToast();
 
-    const handlePriceChange = (id, newPrice) => {
+    const handlePriceChange = async (id, newPrice) => {
         const val = parseFloat(newPrice);
-        const updatedProducts = productos.map(p =>
-            p.id === id ? { ...p, precio_b2b: isNaN(val) ? 0 : val } : p
-        );
-        setProductos(updatedProducts);
+        const finalVal = isNaN(val) ? 0 : val;
+
+        const { error } = await supabase.from('productos')
+            .update({ precio_b2b: finalVal })
+            .eq('id', id);
+
+        if (error) {
+            addToast('Error actualizando precio', 'error');
+            return;
+        }
+
+        if (onUpdate) onUpdate();
     };
 
-    const toggleCatalogVisibility = (id) => {
-        const updatedProducts = productos.map(p =>
-            p.id === id ? { ...p, mostrar_en_catalogo: p.mostrar_en_catalogo === false ? true : false } : p
-        );
-        setProductos(updatedProducts);
+    const toggleCatalogVisibility = async (id, currentVisibility) => {
+        const newVisibility = currentVisibility === false ? true : false;
+
+        const { error } = await supabase.from('productos')
+            .update({ visible_catalogo: newVisibility })
+            .eq('id', id);
+
+        if (error) {
+            addToast('Error actualizando visibilidad', 'error');
+            return;
+        }
+
         addToast('Visibilidad del catálogo actualizada', 'info');
+        if (onUpdate) onUpdate();
     };
     return (
         <div className="inventory-view">
@@ -55,8 +72,15 @@ const Inventory = ({ productos, setProductos, stock_actual, compras }) => {
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
-                                                    value={p.precio_b2b || ''}
-                                                    onChange={(e) => handlePriceChange(p.id, e.target.value)}
+                                                    defaultValue={p.precio_b2b || ''}
+                                                    onBlur={(e) => {
+                                                        if (parseFloat(e.target.value) !== (p.precio_b2b || 0)) {
+                                                            handlePriceChange(p.id, e.target.value);
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handlePriceChange(p.id, e.target.value);
+                                                    }}
                                                     placeholder="0.00"
                                                     style={{ width: '100%', padding: '0.4rem 0.4rem 0.4rem 1.5rem', border: '1px solid var(--border)', borderRadius: '6px', outline: 'none' }}
                                                 />
@@ -64,7 +88,7 @@ const Inventory = ({ productos, setProductos, stock_actual, compras }) => {
                                         </td>
                                         <td>
                                             <button
-                                                onClick={() => toggleCatalogVisibility(p.id)}
+                                                onClick={() => toggleCatalogVisibility(p.id, p.visible_catalogo)}
                                                 style={{
                                                     padding: '0.3rem 0.6rem',
                                                     borderRadius: '20px',
@@ -72,11 +96,11 @@ const Inventory = ({ productos, setProductos, stock_actual, compras }) => {
                                                     fontSize: '0.8rem',
                                                     fontWeight: '600',
                                                     cursor: 'pointer',
-                                                    background: p.mostrar_en_catalogo !== false ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.1)',
-                                                    color: p.mostrar_en_catalogo !== false ? '#10b981' : '#64748b'
+                                                    background: p.visible_catalogo !== false ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.1)',
+                                                    color: p.visible_catalogo !== false ? '#10b981' : '#64748b'
                                                 }}
                                             >
-                                                {p.mostrar_en_catalogo !== false ? 'Ocultar' : 'Mostrar'}
+                                                {p.visible_catalogo !== false ? 'Ocultar' : 'Mostrar'}
                                             </button>
                                         </td>
                                         <td>

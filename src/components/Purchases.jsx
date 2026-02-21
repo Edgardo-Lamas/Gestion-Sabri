@@ -3,7 +3,9 @@ import { Plus, ShoppingCart, Trash2, Package, Calendar, Search } from 'lucide-re
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-const Purchases = ({ productos, setProductos, compras, setCompras }) => {
+import { supabase } from '../lib/supabase';
+
+const Purchases = ({ productos, compras, onUpdate }) => {
     const { addToast } = useToast();
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
@@ -21,7 +23,7 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
         fecha: new Date().toISOString().split('T')[0]
     });
 
-    const addProducto = (e) => {
+    const addProducto = async (e) => {
         e.preventDefault();
         if (!nuevoProductoNombre.trim()) {
             addToast('El nombre del producto no puede estar vacío', 'error');
@@ -29,17 +31,24 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
         }
 
         const nuevoProducto = {
-            id: crypto.randomUUID(),
-            nombre: nuevoProductoNombre.trim()
+            nombre: nuevoProductoNombre.trim(),
+            visible_catalogo: true
         };
 
-        setProductos([...productos, nuevoProducto]);
+        const { error } = await supabase.from('productos').insert([nuevoProducto]);
+
+        if (error) {
+            addToast('Error guardando producto: ' + error.message, 'error');
+            return;
+        }
+
         setNuevoProductoNombre('');
         setIsProductModalOpen(false);
         addToast('Producto agregado correctamente', 'success');
+        if (onUpdate) onUpdate(); // Refrescar estado global
     };
 
-    const addCompra = (e) => {
+    const addCompra = async (e) => {
         e.preventDefault();
         if (!compra.producto_id || !compra.cantidad_kg || !compra.costo_unitario) {
             addToast('Por favor completa todos los campos', 'error');
@@ -47,8 +56,7 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
         }
 
         const nuevaCompra = {
-            ...compra,
-            id: crypto.randomUUID(),
+            producto_id: compra.producto_id,
             cantidad_kg: parseFloat(compra.cantidad_kg),
             cantidad_disponible: parseFloat(compra.cantidad_kg),
             costo_unitario: parseFloat(compra.costo_unitario),
@@ -56,7 +64,13 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
             creado_en: Date.now()
         };
 
-        setCompras([nuevaCompra, ...compras]);
+        const { error } = await supabase.from('compras').insert([nuevaCompra]);
+
+        if (error) {
+            addToast('Error registrando compra: ' + error.message, 'error');
+            return;
+        }
+
         setCompra({
             producto_id: '',
             cantidad_kg: '',
@@ -65,12 +79,18 @@ const Purchases = ({ productos, setProductos, compras, setCompras }) => {
         });
         setIsPurchaseModalOpen(false);
         addToast('Compra registrada exitosamente', 'success');
+        if (onUpdate) onUpdate();
     };
 
-    const deleteCompra = (id) => {
+    const deleteCompra = async (id) => {
         if (window.confirm('¿Seguro que deseas eliminar esta compra?')) {
-            setCompras(compras.filter(c => c.id !== id));
-            addToast('Compra eliminada', 'info');
+            const { error } = await supabase.from('compras').delete().eq('id', id);
+            if (error) {
+                addToast('Error eliminando compra', 'error');
+            } else {
+                addToast('Compra eliminada', 'info');
+                if (onUpdate) onUpdate();
+            }
         }
     };
 

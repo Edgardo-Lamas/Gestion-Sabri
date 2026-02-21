@@ -4,7 +4,9 @@ import { ejecutarAlgoritmoVentaFIFO } from '../utils/fifo';
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas, stock_actual, costoPromedio }) => {
+import { supabase } from '../lib/supabase';
+
+const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, onUpdate }) => {
     const { addToast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -92,7 +94,7 @@ const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas
         setNuevaVenta({ ...nuevaVenta, precio_venta_unitario: precioStr, margen_ganancia: margen });
     };
 
-    const handleVenta = (e) => {
+    const handleVenta = async (e) => {
         e.preventDefault();
 
         if (!nuevaVenta.producto_id || !nuevaVenta.cantidad_vendida || !nuevaVenta.precio_venta_unitario) {
@@ -124,13 +126,7 @@ const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas
             const ingreso_total = cantidad_vendida * precio_venta_unitario;
             const ganancia = ingreso_total - costo_total;
 
-            const nuevas_compras = compras.map(c => {
-                const actualizado = lotes_actualizados.find(la => la.id === c.id);
-                return actualizado ? actualizado : c;
-            });
-
             const registro_venta = {
-                id: crypto.randomUUID(),
                 producto_id: nuevaVenta.producto_id,
                 producto_nombre: productos.find(p => p.id === nuevaVenta.producto_id)?.nombre,
                 fecha: nuevaVenta.fecha,
@@ -141,18 +137,36 @@ const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas
                 ganancia: ganancia
             };
 
-            // Persistir margen en el producto para futuras ventas
-            if (nuevaVenta.margen_ganancia) {
-                const productosActualizados = productos.map(p =>
-                    p.id === nuevaVenta.producto_id
-                        ? { ...p, margen_ganancia: nuevaVenta.margen_ganancia }
-                        : p
-                );
-                setProductos(productosActualizados);
+            // Ejecutar las peticiones a Supabase
+
+            // 1. Actualizar lotes descontados
+            if (lotes_actualizados.length > 0) {
+                // Supabase upsert por id para modificar la cantidad_disponible
+                const comprasParaUpsert = lotes_actualizados.map(la => ({
+                    id: la.id,
+                    producto_id: la.producto_id,
+                    cantidad_kg: la.cantidad_kg,
+                    cantidad_disponible: la.cantidad_disponible,
+                    costo_unitario: la.costo_unitario,
+                    fecha: la.fecha,
+                    creado_en: la.creado_en
+                }));
+
+                const { error: errCompras } = await supabase.from('compras').upsert(comprasParaUpsert);
+                if (errCompras) throw errCompras;
             }
 
-            setCompras(nuevas_compras);
-            setVentas([registro_venta, ...ventas]);
+            // 2. Persistir margen en el producto para futuras ventas
+            if (nuevaVenta.margen_ganancia) {
+                const { error: errProd } = await supabase.from('productos')
+                    .update({ margen_ganancia: parseFloat(nuevaVenta.margen_ganancia) })
+                    .eq('id', nuevaVenta.producto_id);
+                if (errProd) throw errProd;
+            }
+
+            // 3. Registrar Venta
+            const { error: errVenta } = await supabase.from('ventas').insert([registro_venta]);
+            if (errVenta) throw errVenta;
 
             addToast('Venta registrada exitosamente', 'success');
             setIsModalOpen(false);
@@ -165,15 +179,22 @@ const Sales = ({ productos, setProductos, compras, setCompras, ventas, setVentas
                 margen_ganancia: '',
                 fecha: new Date().toISOString().split('T')[0]
             });
+
+            if (onUpdate) onUpdate();
         } catch (err) {
             addToast(err.message, 'error');
         }
     };
 
-    const deleteVenta = (venta) => {
+    const deleteVenta = async (venta) => {
         if (window.confirm('¿Eliminar esta venta? Nota: El stock NO se restaurará automáticamente en este MVP.')) {
-            setVentas(ventas.filter(v => v.id !== venta.id));
-            addToast('Venta eliminada del historial', 'info');
+            const { error } = await supabase.from('ventas').delete().eq('id', venta.id);
+            if (error) {
+                addToast('Error eliminando venta', 'error');
+            } else {
+                addToast('Venta eliminada del historial', 'info');
+                if (onUpdate) onUpdate();
+            }
         }
     };
 

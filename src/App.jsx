@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { ToastProvider } from './context/ToastContext';
+import { supabase } from './lib/supabase';
+import { ToastProvider, useToast } from './context/ToastContext';
+import { AuthProvider, useAuth } from './lib/AuthContext';
+import Login from './components/Login';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -20,20 +22,52 @@ import Expenses from './components/Expenses';
 import Inventory from './components/Inventory';
 import MeatDistribution from './components/MeatDistribution';
 import B2BStoreFront from './components/B2BStoreFront';
+import MigrationHelper from './components/MigrationHelper';
 
-function App() {
+function AppContent({ currentView, setCurrentView }) {
+  const { logout } = useAuth();
+  const { addToast } = useToast();
+
   // Navigation states: 'app' (dashboard) or 'storefront'
-  const [currentView, setCurrentView] = useState('app');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
-  // Estado persistente con nuevos nombres de entidades/campos
-  const [productos, setProductos] = useLocalStorage('sabri_v2_productos', []);
-  const [compras, setCompras] = useLocalStorage('sabri_v2_compras', []);
-  const [ventas, setVentas] = useLocalStorage('sabri_v2_ventas', []);
-  const [gastos, setGastos] = useLocalStorage('sabri_v2_gastos', []);
-  const [distribuciones, setDistribuciones] = useLocalStorage('sabri_v2_distribuciones', []);
+  // Estado con Supabase
+  const [productos, setProductos] = useState([]);
+  const [compras, setCompras] = useState([]);
+  const [ventas, setVentas] = useState([]);
+  const [gastos, setGastos] = useState([]);
+  const [distribuciones, setDistribuciones] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Funciones de carga inicial
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [{ data: pData }, { data: cData }, { data: vData }, { data: gData }, { data: dData }] = await Promise.all([
+        supabase.from('productos').select('*').order('nombre'),
+        supabase.from('compras').select('*').order('fecha', { ascending: false }),
+        supabase.from('ventas').select('*').order('fecha', { ascending: false }),
+        supabase.from('gastos').select('*').order('fecha', { ascending: false }),
+        supabase.from('distribuciones').select('*').order('fecha', { ascending: false })
+      ]);
+
+      if (pData) setProductos(pData);
+      if (cData) setCompras(cData);
+      if (vData) setVentas(vData);
+      if (gData) setGastos(gData);
+      if (dData) setDistribuciones(dData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // Stock calculado para la interfaz
   const stock_actual = useMemo(() => {
@@ -73,11 +107,11 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard compras={compras} ventas={ventas} gastos={gastos} />;
-      case 'purchases': return <Purchases productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} />;
-      case 'sales': return <Sales productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} ventas={ventas} setVentas={setVentas} stock_actual={stock_actual} costoPromedio={costoPromedio} />;
-      case 'expenses': return <Expenses gastos={gastos} setGastos={setGastos} />;
-      case 'inventory': return <Inventory productos={productos} setProductos={setProductos} stock_actual={stock_actual} compras={compras} />;
-      case 'distribution': return <MeatDistribution distribuciones={distribuciones} setDistribuciones={setDistribuciones} productos={productos} costoPromedio={costoPromedio} ventas={ventas} />;
+      case 'purchases': return <Purchases productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} onUpdate={fetchData} />;
+      case 'sales': return <Sales productos={productos} setProductos={setProductos} compras={compras} setCompras={setCompras} ventas={ventas} setVentas={setVentas} stock_actual={stock_actual} costoPromedio={costoPromedio} onUpdate={fetchData} />;
+      case 'expenses': return <Expenses gastos={gastos} setGastos={setGastos} onUpdate={fetchData} />;
+      case 'inventory': return <Inventory productos={productos} setProductos={setProductos} stock_actual={stock_actual} compras={compras} onUpdate={fetchData} />;
+      case 'distribution': return <MeatDistribution distribuciones={distribuciones} setDistribuciones={setDistribuciones} productos={productos} costoPromedio={costoPromedio} ventas={ventas} onUpdate={fetchData} />;
       default: return <Dashboard />;
     }
   };
@@ -92,7 +126,7 @@ function App() {
   ];
 
   return (
-    <ToastProvider>
+    <>
       {currentView === 'storefront' ? (
         <React.Fragment>
           <B2BStoreFront productos={productos} costoPromedio={costoPromedio} />
@@ -111,6 +145,15 @@ function App() {
         </React.Fragment>
       ) : (
         <div className="app-container">
+
+          {/* Carga global */}
+          {loading && (
+            <div className="global-loader">
+              <div className="spinner"></div>
+              <p>Cargando datos desde la nube...</p>
+            </div>
+          )}
+
           {/* Overlay para móvil */}
           {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
 
@@ -151,12 +194,20 @@ function App() {
               </button>
             </div>
 
-            {/* User Section (New) */}
+            {/* User Section */}
             <div className="user-section">
               <div className="user-avatar">S</div>
               <div className="user-info">
                 <span className="user-name">Sabrina</span>
-                <span className="user-role">Administradora</span>
+                <button
+                  onClick={async () => {
+                    await logout();
+                    addToast('Sesión cerrada correctamente', 'info');
+                  }}
+                  className="logout-btn"
+                >
+                  Cerrar Sesión
+                </button>
               </div>
             </div>
           </nav>
@@ -302,6 +353,33 @@ function App() {
             background: linear-gradient(to right, var(--primary), var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+          }
+
+          .global-loader {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+          }
+          
+          .global-loader .spinner {
+            border: 4px solid rgba(249, 115, 22, 0.2);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+          }
+
+          .global-loader p {
+            color: var(--primary);
+            font-weight: 600;
           }
 
           .nav-links {
@@ -550,6 +628,23 @@ function App() {
             to { opacity: 1; transform: translateY(0); }
           }
 
+          /* User/Logout additions */
+          .logout-btn {
+             background: none;
+             border: none;
+             color: var(--text-muted);
+             font-size: 0.75rem;
+             padding: 0;
+             margin-top: 2px;
+             cursor: pointer;
+             text-align: left;
+             text-decoration: underline;
+             transition: color 0.2s;
+          }
+          .logout-btn:hover {
+             color: var(--error);
+          }
+
           /* --- RESPONSIVE --- */
           @media (max-width: 1024px) {
             .sidebar {
@@ -596,8 +691,46 @@ function App() {
         `}</style>
         </div>
       )}
-    </ToastProvider>
+    </>
   );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <ToastProvider>
+        <AppAuthWrapper />
+      </ToastProvider>
+    </AuthProvider>
+  );
+}
+
+function AppAuthWrapper() {
+  const { user, loading } = useAuth();
+  // Navigation states: 'app' (dashboard) or 'storefront'
+  const [currentView, setCurrentView] = useState(() => {
+    // Check if user came via a link directly to storefront
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'storefront' ? 'storefront' : 'app';
+  });
+
+  if (loading) {
+    return (
+      <div className="global-loader">
+        <div className="spinner"></div>
+        <p>Verificando sesión...</p>
+      </div>
+    );
+  }
+
+  // If user is not logged in, they can only see Login or Storefront
+  if (!user && currentView === 'app') {
+    return <Login onGoToStorefront={() => setCurrentView('storefront')} />;
+  }
+
+  return (
+    <AppContent currentView={currentView} setCurrentView={setCurrentView} />
+  )
 }
 
 class ErrorBoundary extends React.Component {
