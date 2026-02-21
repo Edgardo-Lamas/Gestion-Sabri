@@ -8,24 +8,35 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Obtenemos la sesión actual inicial
-        supabase.auth.getSession()
-            .then(({ data: { session } }) => {
+        let subscription = null;
+
+        try {
+            // Obtenemos la sesión actual inicial
+            supabase.auth.getSession()
+                .then(({ data: { session } }) => {
+                    setUser(session?.user ?? null);
+                    setLoading(false);
+                })
+                .catch((error) => {
+                    console.warn('Error al verificar sesión:', error);
+                    setUser(null);
+                    setLoading(false);
+                });
+
+            // Escuchamos cambios de autenticación (login, logout)
+            const { data } = supabase.auth.onAuthStateChange((_event, session) => {
                 setUser(session?.user ?? null);
-                setLoading(false);
-            })
-            .catch((error) => {
-                console.error('Error al verificar sesión:', error);
-                setUser(null);
-                setLoading(false);
             });
+            subscription = data?.subscription;
+        } catch (error) {
+            console.warn('Error al inicializar autenticación:', error);
+            setUser(null);
+            setLoading(false);
+        }
 
-        // Escuchamos cambios de autenticación (login, logout)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-        });
-
-        return () => subscription.unsubscribe();
+        return () => {
+            if (subscription) subscription.unsubscribe();
+        };
     }, []);
 
     const logout = async () => {
