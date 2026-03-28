@@ -26,6 +26,7 @@ import MeatDistribution from './components/MeatDistribution';
 import B2BStoreFront from './components/B2BStoreFront';
 import MigrationHelper from './components/MigrationHelper';
 import ClientProfiles from './components/ClientProfiles';
+import Entrega from './components/Entrega';
 
 function AppContent({ currentView, setCurrentView }) {
   const { logout } = useAuth();
@@ -221,6 +222,17 @@ function AppContent({ currentView, setCurrentView }) {
                 <Package size={20} />
                 <span>Ver Catálogo Público</span>
               </button>
+              <button
+                className="nav-item"
+                style={{ color: '#c9a227', background: 'rgba(201,162,39,0.08)' }}
+                onClick={() => {
+                  window.open('?view=entrega', '_blank');
+                  closeSidebar();
+                }}
+              >
+                <HelpCircle size={20} />
+                <span>Documento de Entrega</span>
+              </button>
             </div>
 
             {/* User Section */}
@@ -237,6 +249,24 @@ function AppContent({ currentView, setCurrentView }) {
                 >
                   Cerrar Sesión
                 </button>
+              </div>
+            </div>
+
+            {/* Studio Lamas signature */}
+            <div className="studio-brand">
+              <span className="studio-copyright">© 2026 Edgardo Lamas</span>
+              <div className="studio-identity">
+                <div className="studio-mark" aria-hidden="true">
+                  <svg viewBox="0 0 14 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0" y="0" width="3.5" height="22" rx="1.75" fill="#c9a227"/>
+                    <rect x="0" y="0" width="11" height="3.5" rx="1.75" fill="#c9a227"/>
+                    <rect x="0" y="18.5" width="11" height="3.5" rx="1.75" fill="#c9a227"/>
+                  </svg>
+                </div>
+                <div className="studio-text">
+                  <span className="studio-name">Studio Lamas</span>
+                  <span className="studio-tagline">Desarrollo Digital</span>
+                </div>
               </div>
             </div>
           </nav>
@@ -657,6 +687,62 @@ function AppContent({ currentView, setCurrentView }) {
             to { opacity: 1; transform: translateY(0); }
           }
 
+          /* Studio Lamas signature */
+          .studio-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+          }
+
+          .studio-copyright {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+          }
+
+          .studio-identity {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+          }
+
+          .studio-mark {
+            width: 14px;
+            height: 22px;
+            flex-shrink: 0;
+            opacity: 0.7;
+          }
+
+          .studio-mark svg {
+            width: 100%;
+            height: 100%;
+          }
+
+          .studio-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+          }
+
+          .studio-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            line-height: 1;
+          }
+
+          .studio-tagline {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            line-height: 1;
+            opacity: 0.7;
+          }
+
           /* User/Logout additions */
           .logout-btn {
              background: none;
@@ -738,10 +824,18 @@ function AppAuthWrapper() {
   const { user, loading } = useAuth();
   // Navigation states: 'app' (dashboard) or 'storefront'
   const [currentView, setCurrentView] = useState(() => {
-    // Check if user came via a link directly to storefront
+    // Check if user came via a link directly to storefront or entrega
     const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'storefront' ? 'storefront' : 'app';
+    const view = params.get('view');
+    if (view === 'storefront') return 'storefront';
+    if (view === 'entrega') return 'entrega';
+    return 'app';
   });
+
+  // Página de entrega: pública, no requiere login ni esperar auth
+  if (currentView === 'entrega') {
+    return <Entrega />;
+  }
 
   if (loading) {
     return (
