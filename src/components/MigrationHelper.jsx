@@ -58,9 +58,8 @@ export default function MigrationHelper() {
                     id: p.id,
                     nombre: p.nombre,
                     margen_ganancia: p.margen_ganancia ? parseFloat(p.margen_ganancia) : null,
-                    visible_catalogo: p.visible_catalogo === false ? false : true,
-                    precio_manual: p.precio_manual ? parseFloat(p.precio_manual) : null,
-                    imagen: p.imagen || null
+                    oculto_catalogo: p.oculto_catalogo === true ? true : false,
+                    precio_catalogo: p.precio_catalogo ? parseFloat(p.precio_catalogo) : null
                 }));
                 const { error: errP } = await supabase.from('productos').upsert(prodsClean);
                 if (errP) throw errP;

@@ -22,11 +22,11 @@ const Inventory = ({ productos, stock_actual, compras, onUpdate }) => {
         if (onUpdate) onUpdate();
     };
 
-    const toggleCatalogVisibility = async (id, currentVisibility) => {
-        const newVisibility = currentVisibility === false ? true : false;
+    const toggleCatalogVisibility = async (id, currentOculto) => {
+        const newOculto = currentOculto === true ? false : true;
 
         const { error } = await supabase.from('productos')
-            .update({ visible_catalogo: newVisibility })
+            .update({ oculto_catalogo: newOculto })
             .eq('id', id);
 
         if (error) {
@@ -88,7 +88,7 @@ const Inventory = ({ productos, stock_actual, compras, onUpdate }) => {
                                         </td>
                                         <td>
                                             <button
-                                                onClick={() => toggleCatalogVisibility(p.id, p.visible_catalogo)}
+                                                onClick={() => toggleCatalogVisibility(p.id, p.oculto_catalogo)}
                                                 style={{
                                                     padding: '0.3rem 0.6rem',
                                                     borderRadius: '20px',
@@ -96,11 +96,11 @@ const Inventory = ({ productos, stock_actual, compras, onUpdate }) => {
                                                     fontSize: '0.8rem',
                                                     fontWeight: '600',
                                                     cursor: 'pointer',
-                                                    background: p.visible_catalogo !== false ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.1)',
-                                                    color: p.visible_catalogo !== false ? '#10b981' : '#64748b'
+                                                    background: p.oculto_catalogo ? 'rgba(100,116,139,0.1)' : 'rgba(16,185,129,0.1)',
+                                                    color: p.oculto_catalogo ? '#64748b' : '#10b981'
                                                 }}
                                             >
-                                                {p.visible_catalogo !== false ? 'Ocultar' : 'Mostrar'}
+                                                {p.oculto_catalogo ? 'Mostrar' : 'Ocultar'}
                                             </button>
                                         </td>
                                         <td>

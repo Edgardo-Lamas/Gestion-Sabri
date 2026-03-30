@@ -32,7 +32,7 @@ const Purchases = ({ productos, compras, onUpdate }) => {
 
         const nuevoProducto = {
             nombre: nuevoProductoNombre.trim(),
-            visible_catalogo: true
+            oculto_catalogo: false
         };
 
         const { error } = await supabase.from('productos').insert([nuevoProducto]);
