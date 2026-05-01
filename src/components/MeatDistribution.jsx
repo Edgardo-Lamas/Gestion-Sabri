@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext';
 
 import { supabase } from '../lib/supabase';
 
-function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, ventas = [], onUpdate }) {
+function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, ventas = [], compras = [], onUpdate }) {
   const { addToast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -32,15 +32,28 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
     });
   }, [distribuciones, periodoFilter]);
 
-  // Precio base derivado del costo promedio del producto seleccionado
-  // Si el usuario lo editó manualmente se usa ese valor, sino el calculado
+  // Costo promedio histórico por producto usando TODOS los lotes de compra,
+  // no solo los disponibles — para que distribución muestre precio aunque el stock ya se haya vendido
+  const costoBase = useMemo(() => {
+    const acc = {};
+    compras.forEach(c => {
+      if (!acc[c.producto_id]) acc[c.producto_id] = { total: 0, kg: 0 };
+      acc[c.producto_id].total += c.costo_unitario * c.cantidad_kg;
+      acc[c.producto_id].kg += c.cantidad_kg;
+    });
+    const r = {};
+    Object.entries(acc).forEach(([id, d]) => { r[id] = d.kg > 0 ? d.total / d.kg : 0; });
+    return r;
+  }, [compras]);
+
+  // Precio base derivado del costo histórico; si el usuario lo edita manualmente, usa ese
   const computedBasePrice = useMemo(() => {
     if (!form.producto) return '';
     const prod = productos.find(p => p.nombre === form.producto);
     if (!prod) return '';
-    const costo = costoPromedio[prod.id];
+    const costo = costoBase[prod.id] || costoPromedio[prod.id] || 0;
     return costo > 0 ? costo.toFixed(2) : '';
-  }, [form.producto, costoPromedio, productos]);
+  }, [form.producto, costoBase, costoPromedio, productos]);
 
   const effectiveBasePrice = form.base_price !== '' ? form.base_price : computedBasePrice;
 
@@ -50,18 +63,19 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
     const { name, value } = e.target;
 
     if (name === 'producto') {
-      const prod = productos.find(p => p.nombre === value);
-      let base_price = form.base_price;
-      let sale_price = form.sale_price;
+      const prod = value ? productos.find(p => p.nombre === value) : null;
+      // Siempre limpiar base_price al cambiar producto para que computedBasePrice tome el control
+      let base_price = '';
+      let sale_price = '';
 
       if (prod) {
-        const costo = costoPromedio[prod.id];
-        if (costo) base_price = costo.toFixed(2);
+        const costo = costoBase[prod.id] || costoPromedio[prod.id] || 0;
+        if (costo > 0) base_price = costo.toFixed(2);
 
         const ventasProducto = ventas.filter(v => v.producto_id === prod.id);
         if (ventasProducto.length > 0) {
           const ultima = ventasProducto[ventasProducto.length - 1];
-          sale_price = ultima.precio_venta_unitario || sale_price;
+          sale_price = (ultima.precio_venta_unitario || '').toString();
         }
       }
 
