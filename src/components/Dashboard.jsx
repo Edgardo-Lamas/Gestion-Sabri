@@ -17,7 +17,7 @@ import {
     Legend
 } from 'recharts';
 
-const Dashboard = ({ compras, ventas, gastos }) => {
+const Dashboard = ({ compras, ventas, gastos, productos, stock_actual }) => {
     const estadisticas = useMemo(() => {
         const total_ingresos = (ventas || []).reduce((sum, v) => sum + (v.ingreso_total || 0), 0);
         const total_costo_mercaderia = (ventas || []).reduce((sum, v) => sum + (v.costo_calculado || 0), 0);
@@ -27,6 +27,50 @@ const Dashboard = ({ compras, ventas, gastos }) => {
 
         return { total_ingresos, total_costo_mercaderia, ganancia_bruta, total_gastos, resultado_final };
     }, [ventas, gastos]);
+
+    const mesStats = useMemo(() => {
+        const now = new Date();
+        const cm = now.getMonth(), cy = now.getFullYear();
+        const pm = cm === 0 ? 11 : cm - 1, py = cm === 0 ? cy - 1 : cy;
+
+        const byMonth = (arr, m, y) => (arr || []).filter(item => {
+            const d = new Date(item.fecha + 'T00:00:00');
+            return d.getMonth() === m && d.getFullYear() === y;
+        });
+
+        const ventasStats = (arr) => ({
+            ingresos: arr.reduce((s, v) => s + (v.ingreso_total || 0), 0),
+            costo: arr.reduce((s, v) => s + (v.costo_calculado || 0), 0),
+        });
+        const totalGastos = (arr) => arr.reduce((s, g) => s + (g.monto || 0), 0);
+
+        const vA = ventasStats(byMonth(ventas, cm, cy));
+        const vP = ventasStats(byMonth(ventas, pm, py));
+        const gA = totalGastos(byMonth(gastos, cm, cy));
+        const gP = totalGastos(byMonth(gastos, pm, py));
+
+        const ganA = vA.ingresos - vA.costo;
+        const ganP = vP.ingresos - vP.costo;
+
+        const pct = (a, p) => p === 0 ? (a > 0 ? 100 : 0) : ((a - p) / p) * 100;
+
+        const monthName = now.toLocaleDateString('es-AR', { month: 'long' });
+
+        return {
+            monthName,
+            ingresos: vA.ingresos, cambioIngresos: pct(vA.ingresos, vP.ingresos),
+            ganancia: ganA, cambioGanancia: pct(ganA, ganP),
+            gastos: gA, cambioGastos: pct(gA, gP),
+        };
+    }, [ventas, gastos]);
+
+    const stockAlertas = useMemo(() => {
+        if (!productos || !stock_actual) return [];
+        return productos
+            .map(p => ({ ...p, stock: stock_actual[p.id] || 0 }))
+            .filter(p => p.stock < 10)
+            .sort((a, b) => a.stock - b.stock);
+    }, [productos, stock_actual]);
 
     // Preparar datos para gráficos
     const dataIngresosGastos = useMemo(() => {
@@ -73,6 +117,43 @@ const Dashboard = ({ compras, ventas, gastos }) => {
 
     return (
         <div className="dashboard-container">
+            {stockAlertas.length > 0 && (
+                <div className="stock-alert-banner">
+                    <span className="alert-icon">⚠</span>
+                    <span className="alert-title">Stock bajo:</span>
+                    <div className="alert-items">
+                        {stockAlertas.map(p => (
+                            <span key={p.id} className={`alert-chip ${p.stock === 0 ? 'sin-stock' : ''}`}>
+                                {p.nombre} — {p.stock === 0 ? 'Sin stock' : `${p.stock.toFixed(1)} kg`}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="mes-section">
+                <h3 className="mes-title">Resumen de {mesStats.monthName}</h3>
+                <div className="mes-grid">
+                    {[
+                        { label: 'Ingresos', value: mesStats.ingresos, cambio: mesStats.cambioIngresos, color: '#0ea5e9' },
+                        { label: 'Ganancia bruta', value: mesStats.ganancia, cambio: mesStats.cambioGanancia, color: '#10b981' },
+                        { label: 'Gastos', value: mesStats.gastos, cambio: mesStats.cambioGastos, color: '#ef4444', invertir: true },
+                    ].map((m) => {
+                        const positivo = m.invertir ? m.cambio <= 0 : m.cambio >= 0;
+                        const cambioAbs = Math.abs(m.cambio).toFixed(1);
+                        return (
+                            <div key={m.label} className="mes-card" style={{ borderLeft: `3px solid ${m.color}` }}>
+                                <span className="mes-label">{m.label}</span>
+                                <span className="mes-value">${(m.value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className={`mes-cambio ${positivo ? 'positivo' : 'negativo'}`}>
+                                    {positivo ? '▲' : '▼'} {cambioAbs}% vs mes anterior
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <div className="stats-grid">
                 {tarjetas.map((t, i) => (
                     <div key={i} className={`glass-card stat-card ${t.focus ? 'focus-card' : ''}`} style={{ '--card-color': t.color }}>
@@ -223,6 +304,79 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                     flex-direction: column;
                     gap: 1.5rem;
                 }
+
+                /* Stock alert banner */
+                .stock-alert-banner {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 0.75rem;
+                    padding: 0.875rem 1.25rem;
+                    background: rgba(245,158,11,0.08);
+                    border: 1px solid rgba(245,158,11,0.3);
+                    border-radius: 10px;
+                    flex-wrap: wrap;
+                }
+                .alert-icon { font-size: 1rem; color: #b45309; flex-shrink: 0; }
+                .alert-title { font-weight: 700; color: #b45309; font-size: 0.85rem; flex-shrink: 0; }
+                .alert-items { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+                .alert-chip {
+                    background: rgba(245,158,11,0.12);
+                    color: #b45309;
+                    border: 1px solid rgba(245,158,11,0.25);
+                    border-radius: 20px;
+                    padding: 0.2rem 0.65rem;
+                    font-size: 0.78rem;
+                    font-weight: 600;
+                }
+                .alert-chip.sin-stock {
+                    background: rgba(239,68,68,0.1);
+                    color: var(--error);
+                    border-color: rgba(239,68,68,0.25);
+                }
+
+                /* Month section */
+                .mes-section { display: flex; flex-direction: column; gap: 0.75rem; }
+                .mes-title {
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.06em;
+                    margin: 0;
+                }
+                .mes-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 1rem;
+                }
+                .mes-card {
+                    background: var(--surface);
+                    border-radius: 10px;
+                    padding: 1rem 1.25rem;
+                    box-shadow: var(--shadow);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.3rem;
+                }
+                .mes-label {
+                    font-size: 0.78rem;
+                    font-weight: 600;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                }
+                .mes-value {
+                    font-size: 1.35rem;
+                    font-weight: 800;
+                    color: var(--text);
+                    letter-spacing: -0.3px;
+                }
+                .mes-cambio {
+                    font-size: 0.72rem;
+                    font-weight: 600;
+                }
+                .mes-cambio.positivo { color: #10b981; }
+                .mes-cambio.negativo { color: #ef4444; }
                 
                 .stats-grid {
                     display: grid;
@@ -534,6 +688,7 @@ const Dashboard = ({ compras, ventas, gastos }) => {
                 }
 
                 @media (max-width: 768px) {
+                    .mes-grid { grid-template-columns: 1fr; }
                     .value { font-size: 1.5rem; }
                     .stats-grid { grid-template-columns: 1fr; }
                     .metrics-row { 

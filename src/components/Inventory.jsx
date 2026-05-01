@@ -62,8 +62,20 @@ const Inventory = ({ productos, stock_actual, compras, onUpdate }) => {
                                 return (
                                     <tr key={p.id}>
                                         <td><strong>{p.nombre}</strong></td>
-                                        <td style={{ color: stock > 0 ? 'var(--secondary)' : 'var(--error)', fontWeight: 'bold' }}>
-                                            {stock.toFixed(2)} kg
+                                        <td style={{ fontWeight: 'bold' }}>
+                                            <span style={{ color: stock === 0 ? 'var(--error)' : stock < 10 ? '#f59e0b' : 'var(--secondary)' }}>
+                                                {stock.toFixed(2)} kg
+                                            </span>
+                                            {stock > 0 && stock < 10 && (
+                                                <span style={{ marginLeft: '0.5rem', background: 'rgba(245,158,11,0.12)', color: '#b45309', fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '10px', border: '1px solid rgba(245,158,11,0.3)' }}>
+                                                    ⚠ Stock bajo
+                                                </span>
+                                            )}
+                                            {stock === 0 && (
+                                                <span style={{ marginLeft: '0.5rem', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                                    Sin stock
+                                                </span>
+                                            )}
                                         </td>
                                         <td>
                                             <div className="input-wrapper" style={{ width: '120px' }}>

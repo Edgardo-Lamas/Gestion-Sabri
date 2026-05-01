@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Scale, Trash2, Plus, Calculator, Truck, DollarSign, TrendingUp, Users, ArrowDownToLine } from 'lucide-react';
+import { Scale, Trash2, Plus, Calculator, DollarSign, TrendingUp, Users, ArrowDownToLine } from 'lucide-react';
 import { calculateMeatSaleDistribution } from '../utils/meatDistribution';
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
@@ -21,6 +21,16 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
   });
 
   const [resultado, setResultado] = useState(null);
+  const [periodoFilter, setPeriodoFilter] = useState('mes');
+
+  const distribFiltradas = useMemo(() => {
+    if (periodoFilter === 'historico') return distribuciones;
+    const now = new Date();
+    return distribuciones.filter(d => {
+      const fd = new Date(d.fecha + 'T00:00:00');
+      return fd.getMonth() === now.getMonth() && fd.getFullYear() === now.getFullYear();
+    });
+  }, [distribuciones, periodoFilter]);
 
   // Precio base derivado del costo promedio del producto seleccionado
   // Si el usuario lo editó manualmente se usa ese valor, sino el calculado
@@ -134,8 +144,8 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
     }
   };
 
-  // Totales del historial
-  const totales = distribuciones.reduce(
+  // Totales del período seleccionado
+  const totales = distribFiltradas.reduce(
     (acc, d) => ({
       ventas: acc.ventas + (d.total_sale || d.sale_price * (d.cantidad || 1)),
       ganancia_sabry: acc.ganancia_sabry + (d.total_partner_profit || d.partner_profit * (d.cantidad || 1)),
@@ -147,6 +157,19 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
 
   return (
     <div className="meat-dist-container">
+      {/* Filtro de período */}
+      <div className="dist-period-row">
+        {[['mes', 'Este mes'], ['historico', 'Histórico']].map(([val, label]) => (
+          <button
+            key={val}
+            className={`dist-period-pill ${periodoFilter === val ? 'active' : ''}`}
+            onClick={() => setPeriodoFilter(val)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Tarjetas resumen */}
       <div className="dist-summary-grid">
         <div className="dist-summary-card" style={{ borderBottom: '3px solid #3b82f6' }}>
@@ -155,7 +178,7 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
             <div className="dist-icon-badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}><DollarSign size={18} /></div>
           </div>
           <p className="dist-summary-value">{fmt(totales.ventas)}</p>
-          <span className="dist-summary-sub">{distribuciones.length} distribuciones</span>
+          <span className="dist-summary-sub">{distribFiltradas.length} distribuciones</span>
         </div>
         <div className="dist-summary-card" style={{ borderBottom: '3px solid #f97316' }}>
           <div className="dist-summary-header">
@@ -366,6 +389,35 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
       <style jsx>{`
         .meat-dist-container {
           width: 100%;
+        }
+
+        .dist-period-row {
+          display: flex;
+          gap: 0.4rem;
+          margin-bottom: 1rem;
+        }
+
+        .dist-period-pill {
+          padding: 0.35rem 0.9rem;
+          border-radius: 20px;
+          border: 1px solid var(--border);
+          background: white;
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .dist-period-pill.active {
+          background: var(--primary);
+          color: white;
+          border-color: var(--primary);
+        }
+
+        .dist-period-pill:hover:not(.active) {
+          border-color: var(--primary);
+          color: var(--primary);
         }
 
         .dist-summary-grid {

@@ -128,7 +128,7 @@ const ClientProfiles = ({ clientes = [], productos = [], compras = [], ventas = 
             return;
         }
         const items = getClientProductsAuto(client).map(cp => ({
-            ...cp, cantidad_cobrar: 1, incluir: true
+            ...cp, cantidad_cobrar: '', incluir: true
         }));
         if (items.length === 0) {
             addToast('No hay productos con stock disponible', 'error');

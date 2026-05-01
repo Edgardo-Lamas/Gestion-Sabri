@@ -9,6 +9,7 @@ const Expenses = ({ gastos, onUpdate }) => {
     const { addToast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [dateFilter, setDateFilter] = useState('all');
 
     // Paginación
     const [currentPage, setCurrentPage] = useState(1);
@@ -64,10 +65,23 @@ const Expenses = ({ gastos, onUpdate }) => {
     };
 
     // Filter and Pagination
-    const filteredGastos = gastos.filter(g =>
-        g.concepto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.fecha.includes(searchTerm)
-    );
+    const filteredGastos = gastos.filter(g => {
+        const matchSearch = !searchTerm ||
+            g.concepto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            g.fecha.includes(searchTerm);
+        let matchDate = true;
+        if (dateFilter !== 'all') {
+            const now = new Date();
+            const gDate = new Date(g.fecha);
+            if (dateFilter === 'week') {
+                const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+                matchDate = gDate >= weekAgo;
+            } else if (dateFilter === 'month') {
+                matchDate = gDate.getMonth() === now.getMonth() && gDate.getFullYear() === now.getFullYear();
+            }
+        }
+        return matchSearch && matchDate;
+    });
 
     const totalPages = Math.ceil(filteredGastos.length / itemsPerPage);
     const paginatedGastos = filteredGastos.slice(
@@ -92,10 +106,21 @@ const Expenses = ({ gastos, onUpdate }) => {
                 </button>
             </div>
 
+            <div className="filter-row">
+                <div className="date-pills">
+                    {[['all','Todo'],['week','Esta semana'],['month','Este mes']].map(([val, label]) => (
+                        <button key={val} className={`filter-pill ${dateFilter === val ? 'active' : ''}`}
+                            onClick={() => { setDateFilter(val); setCurrentPage(1); }}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <section className="glass-card table-section">
                 <div className="table-header-row">
                     <h3>Historial de Gastos</h3>
-                    <span className="badge">{gastos.length} registros</span>
+                    <span className="badge">{filteredGastos.length} registros</span>
                 </div>
                 <div className="table-container">
                     <table>
@@ -221,6 +246,12 @@ const Expenses = ({ gastos, onUpdate }) => {
                     gap: 1rem;
                     flex-wrap: wrap;
                 }
+
+                .filter-row { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+                .date-pills { display:flex; gap:0.4rem; }
+                .filter-pill { padding:0.4rem 0.9rem; border-radius:20px; border:1px solid var(--border); background:white; color:var(--text-muted); font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+                .filter-pill.active { background:var(--primary); color:white; border-color:var(--primary); }
+                .filter-pill:hover:not(.active) { border-color:var(--primary); color:var(--primary); }
 
                 .search-bar {
                     flex: 1;

@@ -10,6 +10,8 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
     const { addToast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [dateFilter, setDateFilter] = useState('all');
+    const [clienteFilter, setClienteFilter] = useState('');
 
     // Paginación simple
     const [currentPage, setCurrentPage] = useState(1);
@@ -185,8 +187,9 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
                 if (errCompras) throw errCompras;
             }
 
-            // 2. Persistir margen en el producto para futuras ventas
-            if (nuevaVenta.margen_ganancia) {
+            // Persistir margen en el producto solo si la venta es sin cliente
+            // (el margen del cliente no debe contaminar el margen base del producto)
+            if (nuevaVenta.margen_ganancia && !nuevaVenta.cliente_id) {
                 const { error: errProd } = await supabase.from('productos')
                     .update({ margen_ganancia: parseFloat(nuevaVenta.margen_ganancia) })
                     .eq('id', nuevaVenta.producto_id);
@@ -229,10 +232,24 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
     };
 
     // Filter and Pagination Logic
-    const filteredVentas = ventas.filter(v =>
-        v.producto_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.fecha.includes(searchTerm)
-    );
+    const filteredVentas = ventas.filter(v => {
+        const matchSearch = !searchTerm ||
+            v.producto_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            v.fecha.includes(searchTerm);
+        const matchCliente = !clienteFilter || v.cliente_id === clienteFilter;
+        let matchDate = true;
+        if (dateFilter !== 'all') {
+            const now = new Date();
+            const vDate = new Date(v.fecha);
+            if (dateFilter === 'week') {
+                const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+                matchDate = vDate >= weekAgo;
+            } else if (dateFilter === 'month') {
+                matchDate = vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear();
+            }
+        }
+        return matchSearch && matchCliente && matchDate;
+    });
 
     const totalPages = Math.ceil(filteredVentas.length / itemsPerPage);
     const paginatedVentas = filteredVentas.slice(
@@ -257,10 +274,28 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
                 </button>
             </div>
 
+            <div className="filter-row">
+                <div className="date-pills">
+                    {[['all','Todo'],['week','Esta semana'],['month','Este mes']].map(([val, label]) => (
+                        <button key={val} className={`filter-pill ${dateFilter === val ? 'active' : ''}`}
+                            onClick={() => { setDateFilter(val); setCurrentPage(1); }}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                {clientes.length > 0 && (
+                    <select className="client-filter-select" value={clienteFilter}
+                        onChange={e => { setClienteFilter(e.target.value); setCurrentPage(1); }}>
+                        <option value="">Todos los clientes</option>
+                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </select>
+                )}
+            </div>
+
             <section className="glass-card table-section">
                 <div className="table-header-row">
                     <h3>Historial de Ventas</h3>
-                    <span className="badge">{ventas.length} registros</span>
+                    <span className="badge">{filteredVentas.length} registros</span>
                 </div>
 
                 <div className="table-container">
@@ -519,6 +554,52 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
                     margin-bottom: 2rem;
                     gap: 1rem;
                     flex-wrap: wrap;
+                }
+
+                .filter-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    margin-bottom: 1rem;
+                    flex-wrap: wrap;
+                }
+                .date-pills {
+                    display: flex;
+                    gap: 0.4rem;
+                }
+                .filter-pill {
+                    padding: 0.4rem 0.9rem;
+                    border-radius: 20px;
+                    border: 1px solid var(--border);
+                    background: white;
+                    color: var(--text-muted);
+                    font-size: 0.82rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .filter-pill.active {
+                    background: var(--primary);
+                    color: white;
+                    border-color: var(--primary);
+                }
+                .filter-pill:hover:not(.active) {
+                    border-color: var(--primary);
+                    color: var(--primary);
+                }
+                .client-filter-select {
+                    padding: 0.4rem 0.75rem;
+                    border-radius: 8px;
+                    border: 1px solid var(--border);
+                    background: white;
+                    font-size: 0.85rem;
+                    color: var(--text);
+                    cursor: pointer;
+                    padding-left: 0.75rem !important;
+                }
+                .client-filter-select:focus {
+                    outline: none;
+                    border-color: var(--primary);
                 }
 
                 .search-bar {
