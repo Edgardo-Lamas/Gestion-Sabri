@@ -313,8 +313,8 @@ function MeatDistribution({ distribuciones, productos = [], costoPromedio = {}, 
                       onClick={() => setExpandedId(expandedId === d.id ? null : d.id)}
                     >
                       <td>{d.fecha}</td>
-                      <td>{d.producto}</td>
-                      <td>{d.cantidad || 1}</td>
+                      <td>{productos.find(p => p.id === d.producto_id)?.nombre || '—'}</td>
+                      <td>{d.cantidad_kg || d.cantidad || 1}</td>
                       <td>{fmt(d.total_sale || d.sale_price * (d.cantidad || 1))}</td>
                       <td style={{ color: '#f97316', fontWeight: 600 }}>{fmt(d.total_partner_profit || d.partner_profit * (d.cantidad || 1))}</td>
                       <td style={{ color: '#10b981', fontWeight: 600 }}>{fmt(d.total_supplier_profit || d.supplier_profit * (d.cantidad || 1))}</td>
