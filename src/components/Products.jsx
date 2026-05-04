@@ -12,6 +12,7 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
     const [nuevoCosto, setNuevoCosto] = useState('');
     const [nuevoPrecioB2B, setNuevoPrecioB2B] = useState('');
     const [nuevoFlete, setNuevoFlete] = useState('');
+    const [nuevoParaSabri, setNuevoParaSabri] = useState(false);
     const [creando, setCreando] = useState(false);
 
     // Modal editar
@@ -22,6 +23,7 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
     const [editCosto, setEditCosto] = useState('');
     const [editPrecioB2B, setEditPrecioB2B] = useState('');
     const [editFlete, setEditFlete] = useState('');
+    const [editParaSabri, setEditParaSabri] = useState(false);
 
     const abrirEditar = (p) => {
         setEditProducto(p);
@@ -29,6 +31,7 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
         setEditCosto(p.costo_referencia != null ? String(p.costo_referencia) : '');
         setEditPrecioB2B(p.precio_catalogo != null ? String(p.precio_catalogo) : '');
         setEditFlete(p.flete_sabri != null ? String(p.flete_sabri) : '');
+        setEditParaSabri(p.para_sabri === true);
         setShowEditar(true);
     };
 
@@ -42,6 +45,7 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
             costo_referencia: parseFloat(editCosto) || 0,
             precio_catalogo: parseFloat(editPrecioB2B) || 0,
             flete_sabri: parseFloat(editFlete) || 0,
+            para_sabri: editParaSabri,
         }).eq('id', editProducto.id);
 
         setEditando(false);
@@ -65,6 +69,7 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
             costo_referencia: parseFloat(nuevoCosto) || 0,
             precio_catalogo: parseFloat(nuevoPrecioB2B) || 0,
             flete_sabri: parseFloat(nuevoFlete) || 0,
+            para_sabri: nuevoParaSabri,
             oculto_catalogo: false,
         }]);
 
@@ -79,6 +84,7 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
         setNuevoCosto('');
         setNuevoPrecioB2B('');
         setNuevoFlete('');
+        setNuevoParaSabri(false);
         setShowCrear(false);
         if (onUpdate) onUpdate();
     };
@@ -205,13 +211,14 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
                                     <th>Costo referencia ($/kg)</th>
                                     <th>Precio catálogo B2B ($/kg)</th>
                                     <th>Stock actual</th>
+                                    <th style={{ textAlign: 'center' }}>Sabri</th>
                                     <th style={{ width: '90px', textAlign: 'center' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {productos.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                                             No hay productos. Creá el primero con el botón de arriba.
                                         </td>
                                     </tr>
@@ -240,6 +247,12 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
                                                 }}>
                                                     {stock.toFixed(2)} kg
                                                 </span>
+                                            </td>
+                                            <td style={{ textAlign: 'center' }}>
+                                                {p.para_sabri
+                                                    ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '0.2rem 0.6rem', borderRadius: '10px', border: '1px solid rgba(16,185,129,0.25)' }}>✓ Sabri</span>
+                                                    : <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>—</span>
+                                                }
                                             </td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
@@ -336,6 +349,20 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
                                         Costo de logística que se descuenta antes de dividir el margen
                                     </p>
                                 </div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={nuevoParaSabri}
+                                        onChange={e => setNuevoParaSabri(e.target.checked)}
+                                        style={{ width: '16px', height: '16px', accentColor: '#10b981', cursor: 'pointer' }}
+                                    />
+                                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)' }}>
+                                        Producto de Sabri
+                                    </span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        (aparece en su panel de ventas)
+                                    </span>
+                                </label>
                             </div>
                             <div className="products-modal-actions">
                                 <button type="button" className="products-secondary-btn" onClick={() => setShowCrear(false)}>
@@ -417,6 +444,20 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
                                         Costo de logística que se descuenta antes de dividir el margen
                                     </p>
                                 </div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', userSelect: 'none' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={editParaSabri}
+                                        onChange={e => setEditParaSabri(e.target.checked)}
+                                        style={{ width: '16px', height: '16px', accentColor: '#10b981', cursor: 'pointer' }}
+                                    />
+                                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)' }}>
+                                        Producto de Sabri
+                                    </span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        (aparece en su panel de ventas)
+                                    </span>
+                                </label>
                             </div>
                             <div className="products-modal-actions">
                                 <button type="button" className="products-secondary-btn" onClick={() => setShowEditar(false)}>

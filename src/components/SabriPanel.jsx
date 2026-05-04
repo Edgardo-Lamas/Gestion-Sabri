@@ -95,7 +95,7 @@ export default function SabriPanel() {
     const load = async () => {
       setLoading(true);
       const [{ data: pData }, { data: cData }, { data: dData }] = await Promise.all([
-        supabase.from('productos').select('id, nombre, flete_sabri').order('nombre'),
+        supabase.from('productos').select('id, nombre, flete_sabri, para_sabri').order('nombre'),
         supabase.from('compras').select('id, producto_id, costo_unitario, cantidad_kg'),
         supabase.from('distribuciones').select('*').order('fecha', { ascending: false }),
       ]);
@@ -580,7 +580,7 @@ export default function SabriPanel() {
                     onChange={e => setForm({ producto_id: e.target.value, cantidad_kg: '', precio_venta: '' })}
                   >
                     <option value="">Seleccioná un producto...</option>
-                    {productos.map(p => (
+                    {productos.filter(p => p.para_sabri).map(p => (
                       <option key={p.id} value={p.id}>{p.nombre}</option>
                     ))}
                   </select>
