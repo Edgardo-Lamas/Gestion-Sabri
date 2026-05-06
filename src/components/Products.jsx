@@ -3,7 +3,7 @@ import { Trash2, Plus, Pencil, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../context/ToastContext';
 
-const Products = ({ productos, stock_actual, onUpdate }) => {
+const Products = ({ productos, stock_actual, clientes = [], descuentos = [], onUpdate }) => {
     const { addToast } = useToast();
 
     // Modal crear
@@ -24,6 +24,9 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
     const [editPrecioB2B, setEditPrecioB2B] = useState('');
     const [editFlete, setEditFlete] = useState('');
     const [editParaSabri, setEditParaSabri] = useState(false);
+    const [editDescuentos, setEditDescuentos] = useState([]); // [{cliente_id, margen_ganancia}]
+    const [addDescClienteId, setAddDescClienteId] = useState('');
+    const [addDescMargen, setAddDescMargen] = useState('');
 
     const abrirEditar = (p) => {
         setEditProducto(p);
@@ -32,6 +35,9 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
         setEditPrecioB2B(p.precio_catalogo != null ? String(p.precio_catalogo) : '');
         setEditFlete(p.flete_sabri != null ? String(p.flete_sabri) : '');
         setEditParaSabri(p.para_sabri === true);
+        setEditDescuentos(descuentos.filter(d => d.producto_id === p.id).map(d => ({ cliente_id: d.cliente_id, margen_ganancia: d.margen_ganancia })));
+        setAddDescClienteId('');
+        setAddDescMargen('');
         setShowEditar(true);
     };
 
@@ -52,6 +58,14 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
         if (error) {
             addToast('Error al guardar: ' + error.message, 'error');
             return;
+        }
+
+        // Guardar descuentos por cliente: borrar los anteriores e insertar los nuevos
+        await supabase.from('descuentos_cliente_producto').delete().eq('producto_id', editProducto.id);
+        if (editDescuentos.length > 0) {
+            await supabase.from('descuentos_cliente_producto').insert(
+                editDescuentos.map(d => ({ producto_id: editProducto.id, cliente_id: d.cliente_id, margen_ganancia: parseFloat(d.margen_ganancia) || 0 }))
+            );
         }
 
         addToast('Producto actualizado', 'success');
@@ -458,6 +472,82 @@ const Products = ({ productos, stock_actual, onUpdate }) => {
                                         (aparece en su panel de ventas)
                                     </span>
                                 </label>
+
+                                {/* ── Descuentos por cliente ── */}
+                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+                                    <label style={{ ...labelStyle, marginBottom: '0.75rem' }}>Descuentos por cliente (%)</label>
+
+                                    {editDescuentos.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                            {editDescuentos.map((d, i) => {
+                                                const cli = clientes.find(c => c.id === d.cliente_id);
+                                                return (
+                                                    <div key={d.cliente_id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.4rem 0.6rem' }}>
+                                                        <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: 600 }}>{cli?.nombre || '—'}</span>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.5"
+                                                            value={d.margen_ganancia}
+                                                            onChange={e => {
+                                                                const copy = [...editDescuentos];
+                                                                copy[i] = { ...copy[i], margen_ganancia: e.target.value };
+                                                                setEditDescuentos(copy);
+                                                            }}
+                                                            style={{ width: '70px', padding: '0.3rem 0.5rem', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.88rem', textAlign: 'right' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>%</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditDescuentos(editDescuentos.filter((_, idx) => idx !== i))}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem', display: 'flex', alignItems: 'center' }}
+                                                            title="Quitar"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Agregar nuevo cliente */}
+                                    {clientes.filter(c => !editDescuentos.find(d => d.cliente_id === c.id)).length > 0 && (
+                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <select
+                                                value={addDescClienteId}
+                                                onChange={e => setAddDescClienteId(e.target.value)}
+                                                style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.85rem', background: 'var(--surface)' }}
+                                            >
+                                                <option value="">+ Cliente...</option>
+                                                {clientes.filter(c => !editDescuentos.find(d => d.cliente_id === c.id)).map(c => (
+                                                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                placeholder="%"
+                                                value={addDescMargen}
+                                                onChange={e => setAddDescMargen(e.target.value)}
+                                                style={{ width: '70px', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.85rem', textAlign: 'right' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!addDescClienteId || addDescMargen === '') return;
+                                                    setEditDescuentos([...editDescuentos, { cliente_id: addDescClienteId, margen_ganancia: addDescMargen }]);
+                                                    setAddDescClienteId('');
+                                                    setAddDescMargen('');
+                                                }}
+                                                style={{ padding: '0.4rem 0.75rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
+                                            >
+                                                Agregar
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="products-modal-actions">
                                 <button type="button" className="products-secondary-btn" onClick={() => setShowEditar(false)}>

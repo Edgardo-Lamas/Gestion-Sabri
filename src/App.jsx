@@ -50,19 +50,21 @@ function AppContent({ currentView, setCurrentView }) {
   const [gastos, setGastos] = useState([]);
   const [distribuciones, setDistribuciones] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [descuentos, setDescuentos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Funciones de carga inicial
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [{ data: pData, error: pErr }, { data: cData }, { data: vData }, { data: gData }, { data: dData }, { data: clData }] = await Promise.all([
+      const [{ data: pData, error: pErr }, { data: cData }, { data: vData }, { data: gData }, { data: dData }, { data: clData }, { data: descData }] = await Promise.all([
         supabase.from('productos').select('*').order('nombre'),
         supabase.from('compras').select('*').order('fecha', { ascending: false }),
         supabase.from('ventas').select('*').order('fecha', { ascending: false }),
         supabase.from('gastos').select('*').order('fecha', { ascending: false }),
         supabase.from('distribuciones').select('*').order('fecha', { ascending: false }),
         supabase.from('clientes').select('*').order('nombre'),
+        supabase.from('descuentos_cliente_producto').select('*'),
       ]);
 
       // Si Supabase falla o está pausado, usar datos de demo
@@ -80,6 +82,7 @@ function AppContent({ currentView, setCurrentView }) {
         if (gData) setGastos(gData);
         if (dData) setDistribuciones(dData);
         if (clData) setClientes(clData);
+        if (descData) setDescuentos(descData);
       }
     } catch (error) {
       console.warn('Supabase no disponible, cargando datos de demo:', error);
@@ -137,12 +140,12 @@ function AppContent({ currentView, setCurrentView }) {
     switch (activeTab) {
       case 'dashboard': return <Dashboard compras={compras} ventas={ventas} gastos={gastos} productos={productos} stock_actual={stock_actual} />;
       case 'purchases': return <Purchases productos={productos} compras={compras} onUpdate={fetchData} />;
-      case 'sales': return <Sales productos={productos} compras={compras} ventas={ventas} stock_actual={stock_actual} costoPromedio={costoPromedio} clientes={clientes} onUpdate={fetchData} />;
+      case 'sales': return <Sales productos={productos} compras={compras} ventas={ventas} stock_actual={stock_actual} costoPromedio={costoPromedio} clientes={clientes} descuentos={descuentos} onUpdate={fetchData} />;
       case 'expenses': return <Expenses gastos={gastos} onUpdate={fetchData} />;
       case 'inventory': return <Inventory productos={productos} stock_actual={stock_actual} compras={compras} onUpdate={fetchData} />;
       case 'distribution': return <MeatDistribution distribuciones={distribuciones} productos={productos} costoPromedio={costoPromedio} ventas={ventas} compras={compras} onUpdate={fetchData} />;
       case 'clients': return <ClientProfiles clientes={clientes} productos={productos} compras={compras} ventas={ventas} stock_actual={stock_actual} costoPromedio={costoPromedio} onUpdate={fetchData} />;
-      case 'products': return <Products productos={productos} compras={compras} ventas={ventas} distribuciones={distribuciones} stock_actual={stock_actual} onUpdate={fetchData} />;
+      case 'products': return <Products productos={productos} compras={compras} ventas={ventas} distribuciones={distribuciones} stock_actual={stock_actual} clientes={clientes} descuentos={descuentos} onUpdate={fetchData} />;
       case 'sabri-reporte': return <ReporteSabriAdmin distribuciones={distribuciones} productos={productos} />;
       default: return <Dashboard />;
     }

@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext';
 
 import { supabase } from '../lib/supabase';
 
-const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, clientes = [], onUpdate }) => {
+const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, clientes = [], descuentos = [], onUpdate }) => {
     const { addToast } = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -50,14 +50,23 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
         return catalogo > 0 ? catalogo : (costoPromedio[producto_id] || 0);
     };
 
-    // Precio final para un cliente: base × (1 + margen_cliente / 100)
+    // Margen efectivo: descuento específico cliente+producto, o margen general del cliente
+    const getMargenEfectivo = (cliente_id, producto_id) => {
+        const especifico = descuentos.find(d => d.cliente_id === cliente_id && d.producto_id === producto_id);
+        if (especifico != null) return { margen: especifico.margen_ganancia, esEspecifico: true };
+        const cliente = clientes.find(c => c.id === cliente_id);
+        if (cliente?.margen_ganancia != null) return { margen: cliente.margen_ganancia, esEspecifico: false };
+        return null;
+    };
+
+    // Precio final para un cliente: base × (1 + margen / 100)
     const getPrecioCliente = (cliente_id, producto_id) => {
         if (!cliente_id || !producto_id) return null;
-        const cliente = clientes.find(c => c.id === cliente_id);
-        if (!cliente || cliente.margen_ganancia === null || cliente.margen_ganancia === undefined) return null;
+        const result = getMargenEfectivo(cliente_id, producto_id);
+        if (!result) return null;
         const base = getPrecioBase(producto_id);
         if (base <= 0) return null;
-        return base * (1 + parseFloat(cliente.margen_ganancia) / 100);
+        return base * (1 + parseFloat(result.margen) / 100);
     };
 
     // Al seleccionar un producto, autocompletar precio y margen
@@ -73,9 +82,8 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
         // Si hay cliente seleccionado con margen, aplicarlo sobre el precio catálogo
         const precioCliente = getPrecioCliente(nuevaVenta.cliente_id, producto_id);
         if (precioCliente) {
-            const cliente = clientes.find(c => c.id === nuevaVenta.cliente_id);
-            const margen = cliente?.margen_ganancia ?? '';
-            setNuevaVenta({ ...nuevaVenta, producto_id, precio_venta_unitario: precioCliente.toFixed(2), margen_ganancia: margen });
+            const result = getMargenEfectivo(nuevaVenta.cliente_id, producto_id);
+            setNuevaVenta({ ...nuevaVenta, producto_id, precio_venta_unitario: precioCliente.toFixed(2), margen_ganancia: result?.margen ?? '' });
             return;
         }
 
@@ -92,9 +100,8 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
     const handleClienteChange = (cliente_id) => {
         const precioCliente = getPrecioCliente(cliente_id, nuevaVenta.producto_id);
         if (precioCliente) {
-            const cliente = clientes.find(c => c.id === cliente_id);
-            const margen = cliente?.margen_ganancia ?? '';
-            setNuevaVenta({ ...nuevaVenta, cliente_id, precio_venta_unitario: precioCliente.toFixed(2), margen_ganancia: margen });
+            const result = getMargenEfectivo(cliente_id, nuevaVenta.producto_id);
+            setNuevaVenta({ ...nuevaVenta, cliente_id, precio_venta_unitario: precioCliente.toFixed(2), margen_ganancia: result?.margen ?? '' });
         } else {
             setNuevaVenta({ ...nuevaVenta, cliente_id });
         }
@@ -415,10 +422,18 @@ const Sales = ({ productos, compras, ventas, stock_actual, costoPromedio, client
                             </select>
                         </div>
                         {nuevaVenta.cliente_id && (() => {
+                            const result = nuevaVenta.producto_id
+                                ? getMargenEfectivo(nuevaVenta.cliente_id, nuevaVenta.producto_id)
+                                : null;
                             const cli = clientes.find(c => c.id === nuevaVenta.cliente_id);
+                            if (result?.esEspecifico) return (
+                                <small className="field-hint" style={{ color: '#10b981', fontStyle: 'normal', fontWeight: 600 }}>
+                                    ✓ Descuento específico para este corte: +{result.margen}%
+                                </small>
+                            );
                             if (cli?.margen_ganancia != null) return (
                                 <small className="field-hint" style={{ color: 'var(--secondary)', fontStyle: 'normal', fontWeight: 600 }}>
-                                    ✓ Margen de {cli.nombre}: +{cli.margen_ganancia}% aplicado al precio
+                                    ✓ Margen general de {cli.nombre}: +{cli.margen_ganancia}%
                                 </small>
                             );
                             return null;
